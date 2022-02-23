@@ -24,7 +24,7 @@ struct Cpu {
 
 pub trait Platform {
     fn clear_display(&mut self);
-    fn draw_pixel(&mut self, x: u32, y: u32);
+    fn draw_pixel(&mut self, x: u32, y: u32) -> bool;
     fn update(&mut self);
     fn pending_close(&self) -> bool;
     fn play_sound(&mut self);
@@ -370,32 +370,38 @@ impl Emulator {
             } => {
                 let origin_x = cpu.registers[register_x] as u32;
                 let origin_y = cpu.registers[register_y] as u32;
+                let mut xored = false;
                 for i in 0..n_bytes {
                     let data = memory[cpu.register_i as usize + i as usize];
                     if data & 0b10000000 != 0 {
-                        platform.draw_pixel(origin_x, origin_y + i as u32);
+                        xored |= platform.draw_pixel(origin_x, origin_y + i as u32);
                     }
                     if data & 0b01000000 != 0 {
-                        platform.draw_pixel(origin_x + 1, origin_y + i as u32);
+                        xored |= platform.draw_pixel(origin_x + 1, origin_y + i as u32);
                     }
                     if data & 0b00100000 != 0 {
-                        platform.draw_pixel(origin_x + 2, origin_y + i as u32);
+                        xored |= platform.draw_pixel(origin_x + 2, origin_y + i as u32);
                     }
                     if data & 0b00010000 != 0 {
-                        platform.draw_pixel(origin_x + 3, origin_y + i as u32);
+                        xored |= platform.draw_pixel(origin_x + 3, origin_y + i as u32);
                     }
                     if data & 0b00001000 != 0 {
-                        platform.draw_pixel(origin_x + 4, origin_y + i as u32);
+                        xored |= platform.draw_pixel(origin_x + 4, origin_y + i as u32);
                     }
                     if data & 0b00000100 != 0 {
-                        platform.draw_pixel(origin_x + 5, origin_y + i as u32);
+                        xored |= platform.draw_pixel(origin_x + 5, origin_y + i as u32);
                     }
                     if data & 0b00000010 != 0 {
-                        platform.draw_pixel(origin_x + 6, origin_y + i as u32);
+                        xored |= platform.draw_pixel(origin_x + 6, origin_y + i as u32);
                     }
                     if data & 0b00000001 != 0 {
-                        platform.draw_pixel(origin_x + 7, origin_y + i as u32);
+                        xored |= platform.draw_pixel(origin_x + 7, origin_y + i as u32);
                     }
+                }
+                if xored {
+                    cpu.registers[0xF] = 1;
+                } else {
+                    cpu.registers[0xF] = 0;
                 }
             }
             CondKeyPressed { register } => {}

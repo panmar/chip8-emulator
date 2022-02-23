@@ -3,6 +3,7 @@
 
 extern crate sdl2;
 
+use std::collections::HashSet;
 use crate::chip8::{Platform, SCREEN_HEIGHT, SCREEN_WIDTH};
 use sdl2::{
     audio::{AudioCallback, AudioDevice, AudioSpecDesired},
@@ -20,6 +21,7 @@ pub struct SDLPlatform {
     canvas: Canvas<Window>,
     pending_close: bool,
     audio: AudioDevice<SquareWave>,
+    drawn_pixels: HashSet<(u32, u32)>,
 }
 
 struct SquareWave {
@@ -75,6 +77,7 @@ impl SDLPlatform {
             canvas,
             pending_close: false,
             audio: audio_device,
+            drawn_pixels: HashSet::new(),
         }
     }
 }
@@ -86,8 +89,18 @@ impl Platform for SDLPlatform {
         self.canvas.present();
     }
 
-    fn draw_pixel(&mut self, x: u32, y: u32) {
-        self.canvas.set_draw_color(Color::RGB(255, 255, 255));
+    fn draw_pixel(&mut self, x: u32, y: u32) -> bool {
+        let mut xored = false;
+        let mut color = Color::RGB(255, 255, 255);
+        if self.drawn_pixels.contains(&(x, y)) {
+            color = Color::RGB(0, 0, 0);
+            self.drawn_pixels.remove(&(x, y));
+            xored = true;
+        } else {
+            self.drawn_pixels.insert((x, y));
+        }
+
+        self.canvas.set_draw_color(color);
         let pixel_size = 20u32;
         self.canvas
             .fill_rect(Rect::new(
@@ -98,6 +111,8 @@ impl Platform for SDLPlatform {
             ))
             .unwrap();
         self.canvas.present();
+
+        return xored;
     }
 
     fn update(&mut self) {
