@@ -5,29 +5,76 @@ extern crate sdl2;
 
 use crate::chip8::{Platform, SCREEN_HEIGHT, SCREEN_WIDTH};
 use sdl2::{
-    event::Event, keyboard::Keycode, pixels::Color, rect::Rect, render::Canvas, video::Window, Sdl,
+    audio::{AudioCallback, AudioDevice, AudioSpecDesired},
+    event::Event,
+    keyboard::Keycode,
+    pixels::Color,
+    rect::Rect,
+    render::Canvas,
+    video::Window,
+    Sdl,
 };
 
 pub struct SDLPlatform {
     context: Sdl,
     canvas: Canvas<Window>,
     pending_close: bool,
+    audio: AudioDevice<SquareWave>,
+}
+
+struct SquareWave {
+    phase_inc: f32,
+    phase: f32,
+    volume: f32,
+}
+
+impl AudioCallback for SquareWave {
+    type Channel = f32;
+
+    fn callback(&mut self, out: &mut [f32]) {
+        for x in out.iter_mut() {
+            if self.phase >= 0.0 && self.phase < 0.5 {
+                *x = self.volume;
+            } else {
+                *x = -self.volume;
+            }
+            self.phase = (self.phase + self.phase_inc) % 1.0;
+        }
+    }
 }
 
 impl SDLPlatform {
     pub fn new() -> SDLPlatform {
         let context = sdl2::init().unwrap();
-        let video_subsystem = context.video().unwrap();
-        let window = video_subsystem
+        let video = context.video().unwrap();
+        let audio = context.audio().unwrap();
+
+        let desired_spec = AudioSpecDesired {
+            freq: Some(44100),
+            channels: Some(1),
+            samples: None,
+        };
+
+        let audio_device = audio
+            .open_playback(None, &desired_spec, |spec| SquareWave {
+                phase_inc: 440.0 / spec.freq as f32,
+                phase: 0.0,
+                volume: 0.25,
+            })
+            .unwrap();
+
+        let window = video
             .window("CHIP-8 emulator", SCREEN_WIDTH * 20, SCREEN_HEIGHT * 20)
             .position_centered()
             .build()
             .unwrap();
         let canvas = window.into_canvas().build().unwrap();
+
         SDLPlatform {
             context,
             canvas,
             pending_close: false,
+            audio: audio_device,
         }
     }
 }
@@ -69,5 +116,13 @@ impl Platform for SDLPlatform {
 
     fn pending_close(&self) -> bool {
         self.pending_close
+    }
+
+    fn play_sound(&mut self) {
+        self.audio.resume();
+    }
+
+    fn stop_sound(&mut self) {
+        self.audio.pause();
     }
 }

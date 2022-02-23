@@ -27,6 +27,8 @@ pub trait Platform {
     fn draw_pixel(&mut self, x: u32, y: u32);
     fn update(&mut self);
     fn pending_close(&self) -> bool;
+    fn play_sound(&mut self);
+    fn stop_sound(&mut self);
 }
 
 #[rustfmt::skip]
@@ -238,8 +240,6 @@ impl Emulator {
         let memory = &mut self.memory;
         let platform = &mut self.platform;
 
-        cpu.program_counter += 2;
-
         use Instruction::*;
         match instruction {
             ClearDisplay => platform.clear_display(),
@@ -427,31 +427,42 @@ impl Emulator {
                 }
             }
 
-            _ => {}
+            Unknown { opcode } => { println!("Unknown instruction: {:#06x}", opcode)}
         }
     }
 
     fn emulation_step(&mut self) {
-        let cpu = &mut self.cpu;
-        let memory = &mut self.memory;
-
         let opcode = u16::from_be_bytes([
-            memory[cpu.program_counter as usize],
-            memory[(cpu.program_counter + 1) as usize],
+            self.memory[self.cpu.program_counter as usize],
+            self.memory[(self.cpu.program_counter + 1) as usize],
         ]);
 
         let instruction = Instruction::parse(opcode);
 
         print!(
             "[{:#06x}] instruction: {:#06x}",
-            cpu.program_counter, opcode
+            self.cpu.program_counter, opcode
         );
         print!(" ");
         for i in 0..0xf {
-            print!("r[{}]={} ", i, cpu.registers[i as usize]);
+            print!("r[{}]={} ", i, self.cpu.registers[i as usize]);
         }
         println!();
 
+        // TODO(panmar): This is a hack, probably should be inside execution
+        self.cpu.program_counter += 2;
+
         self.execute(instruction);
+
+        if self.cpu.sound_timer > 0 {
+            self.platform.play_sound();
+            self.cpu.sound_timer = self.cpu.sound_timer - 1;
+        } else {
+            self.platform.stop_sound();
+        }
+
+        if self.cpu.delay_timer > 0 {
+            self.cpu.delay_timer = self.cpu.delay_timer - 1;
+        }
     }
 }
