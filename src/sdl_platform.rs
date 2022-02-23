@@ -3,7 +3,6 @@
 
 extern crate sdl2;
 
-use std::collections::HashSet;
 use crate::chip8::{Platform, SCREEN_HEIGHT, SCREEN_WIDTH};
 use sdl2::{
     audio::{AudioCallback, AudioDevice, AudioSpecDesired},
@@ -15,6 +14,7 @@ use sdl2::{
     video::Window,
     Sdl,
 };
+use std::collections::HashSet;
 
 pub struct SDLPlatform {
     context: Sdl,
@@ -80,16 +80,8 @@ impl SDLPlatform {
             drawn_pixels: HashSet::new(),
         }
     }
-}
 
-impl Platform for SDLPlatform {
-    fn clear_display(&mut self) {
-        self.canvas.set_draw_color(Color::RGB(0, 0, 0));
-        self.canvas.clear();
-        self.canvas.present();
-    }
-
-    fn draw_pixel(&mut self, x: u32, y: u32) -> bool {
+    fn draw_pixel_no_present(&mut self, x: u32, y: u32) -> bool {
         let mut xored = false;
         let mut color = Color::RGB(255, 255, 255);
         if self.drawn_pixels.contains(&(x, y)) {
@@ -110,6 +102,24 @@ impl Platform for SDLPlatform {
                 pixel_size,
             ))
             .unwrap();
+
+        return xored;
+    }
+}
+
+impl Platform for SDLPlatform {
+    fn clear_display(&mut self) {
+        self.canvas.set_draw_color(Color::RGB(0, 0, 0));
+        self.canvas.clear();
+        self.canvas.present();
+    }
+
+    fn draw_pixels(&mut self, pixels: &[(u32, u32)]) -> bool {
+        let mut xored = false;
+        for pixel in pixels {
+            xored |= self.draw_pixel_no_present(pixel.0, pixel.1);
+        }
+
         self.canvas.present();
 
         return xored;
