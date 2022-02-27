@@ -25,11 +25,80 @@ struct Cpu {
 pub trait Platform {
     fn clear_display(&mut self);
     fn draw_pixels(&mut self, pixels: &[(u32, u32)]) -> bool;
+    fn is_key_pressed(&self, key: Key) -> bool;
+    fn get_key_pressed(&self) -> Option<Key>;
     fn update(&mut self);
     fn draw(&mut self);
     fn pending_close(&self) -> bool;
     fn play_sound(&mut self);
     fn stop_sound(&mut self);
+}
+
+#[derive(Debug)]
+pub enum Key {
+    Num0,
+    Num1,
+    Num2,
+    Num3,
+    Num4,
+    Num5,
+    Num6,
+    Num7,
+    Num8,
+    Num9,
+    A,
+    B,
+    C,
+    D,
+    E,
+    F,
+}
+
+impl Key {
+    pub fn value(&self) -> u8 {
+        match *self {
+            Key::Num0 => 0,
+            Key::Num1 => 1,
+            Key::Num2 => 2,
+            Key::Num3 => 3,
+            Key::Num4 => 4,
+            Key::Num5 => 5,
+            Key::Num6 => 6,
+            Key::Num7 => 7,
+            Key::Num8 => 8,
+            Key::Num9 => 9,
+            Key::A => 10,
+            Key::B => 11,
+            Key::C => 12,
+            Key::D => 13,
+            Key::E => 14,
+            Key::F => 15,
+        }
+    }
+}
+
+impl From<u8> for Key {
+    fn from(orig: u8) -> Self {
+        match orig {
+            0 => return Key::Num0,
+            1 => return Key::Num1,
+            2 => return Key::Num2,
+            3 => return Key::Num3,
+            4 => return Key::Num4,
+            5 => return Key::Num5,
+            6 => return Key::Num6,
+            7 => return Key::Num7,
+            8 => return Key::Num8,
+            9 => return Key::Num9,
+            10 => return Key::A,
+            11 => return Key::B,
+            12 => return Key::C,
+            13 => return Key::D,
+            14 => return Key::E,
+            15 => return Key::F,
+            _ => return Key::F,
+        };
+    }
 }
 
 #[rustfmt::skip]
@@ -412,10 +481,23 @@ impl Emulator {
                     cpu.registers[0xF] = 0;
                 }
             }
-            CondKeyPressed { register } => {}
-            CondKeyNotPressed { register } => {}
+            CondKeyPressed { register } => {
+                let key: Key = cpu.registers[register].into();
+                if self.platform.is_key_pressed(key) {
+                    cpu.program_counter += 2;
+                }
+            }
+            CondKeyNotPressed { register } => {
+                let key: Key = cpu.registers[register].into();
+                if !self.platform.is_key_pressed(key) {
+                    cpu.program_counter += 2;
+                }
+            }
             AssignDelayTimerToReg { register } => cpu.registers[register] = cpu.delay_timer,
-            AwaitAndSetKeyPress { register } => {}
+            AwaitAndSetKeyPress { register } => match self.platform.get_key_pressed() {
+                Some(keycode) => cpu.registers[register] = keycode.value(),
+                _ => cpu.program_counter -= 2,
+            },
             SetDelayTimer { register } => cpu.delay_timer = cpu.registers[register],
             SetSoundTimer { register } => cpu.sound_timer = cpu.registers[register],
             AddRegToAddressWithoutCarry { register } => {
@@ -455,15 +537,15 @@ impl Emulator {
 
         let instruction = Instruction::parse(opcode);
 
-        print!(
-            "[{:#06x}] instruction: {:#06x}",
-            self.cpu.program_counter, opcode
-        );
-        print!(" ");
-        for i in 0..0xf {
-            print!("r[{}]={} ", i, self.cpu.registers[i as usize]);
-        }
-        println!();
+        // print!(
+        //     "[{:#06x}] instruction: {:#06x}",
+        //     self.cpu.program_counter, opcode
+        // );
+        // print!(" ");
+        // for i in 0..0xf {
+        //     print!("r[{}]={} ", i, self.cpu.registers[i as usize]);
+        // }
+        // println!();
 
         // TODO(panmar): This is a hack, probably should be inside execution
         self.cpu.program_counter += 2;

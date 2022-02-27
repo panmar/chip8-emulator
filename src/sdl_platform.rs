@@ -3,7 +3,7 @@
 
 extern crate sdl2;
 
-use crate::chip8::{Platform, SCREEN_HEIGHT, SCREEN_WIDTH};
+use crate::chip8::{Platform, SCREEN_HEIGHT, SCREEN_WIDTH, Key};
 use sdl2::{
     audio::{AudioCallback, AudioDevice, AudioSpecDesired},
     event::Event,
@@ -22,6 +22,7 @@ pub struct SDLPlatform {
     pending_close: bool,
     audio: AudioDevice<SquareWave>,
     drawn_pixels: HashSet<(u32, u32)>,
+    pressed_keys: HashSet<Keycode>,
 }
 
 struct SquareWave {
@@ -78,6 +79,7 @@ impl SDLPlatform {
             pending_close: false,
             audio: audio_device,
             drawn_pixels: HashSet::new(),
+            pressed_keys: HashSet::new(),
         }
     }
 
@@ -107,6 +109,59 @@ impl Platform for SDLPlatform {
         return xored;
     }
 
+    fn is_key_pressed(&self, key: Key) -> bool {
+        for code in self.pressed_keys.iter() {
+            let code_as_i32 = match code {
+                Keycode::Num0 => 0,
+                Keycode::Num1 => 1,
+                Keycode::Num2 => 2,
+                Keycode::Num3 => 3,
+                Keycode::Num4 => 4,
+                Keycode::Num5 => 5,
+                Keycode::Num6 => 6,
+                Keycode::Num7 => 7,
+                Keycode::Num8 => 8,
+                Keycode::Num9 => 9,
+                Keycode::A => 10,
+                Keycode::B => 11,
+                Keycode::C => 12,
+                Keycode::D => 13,
+                Keycode::E => 14,
+                Keycode::F => 15,
+                _ => 42,
+            };
+            if code_as_i32 == key.value() {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    fn get_key_pressed(&self) -> Option<Key> {
+        for code in self.pressed_keys.iter() {
+            match code {
+                Keycode::Num0 => return Some(Key::Num0),
+                Keycode::Num1 => return Some(Key::Num1),
+                Keycode::Num2 => return Some(Key::Num2),
+                Keycode::Num3 => return Some(Key::Num3),
+                Keycode::Num4 => return Some(Key::Num4),
+                Keycode::Num5 => return Some(Key::Num5),
+                Keycode::Num6 => return Some(Key::Num6),
+                Keycode::Num7 => return Some(Key::Num7),
+                Keycode::Num8 => return Some(Key::Num8),
+                Keycode::Num9 => return Some(Key::Num9),
+                Keycode::A => return Some(Key::A),
+                Keycode::B => return Some(Key::B),
+                Keycode::C => return Some(Key::C),
+                Keycode::D => return Some(Key::D),
+                Keycode::E => return Some(Key::E),
+                Keycode::F => return Some(Key::F),
+                _ => return Option::None,
+            };
+        }
+        return Option::None;
+    }
+
     fn update(&mut self) {
         let mut event_pump = self.context.event_pump().unwrap();
         for event in event_pump.poll_iter() {
@@ -119,6 +174,14 @@ impl Platform for SDLPlatform {
                 _ => {}
             }
         }
+
+        self.pressed_keys = event_pump
+            .keyboard_state()
+            .pressed_scancodes()
+            .filter_map(Keycode::from_scancode)
+            .collect();
+
+        // println!("{:?}", self.pressed_keys);
     }
 
     fn draw(&mut self) {
