@@ -26,6 +26,7 @@ pub trait Platform {
     fn clear_display(&mut self);
     fn draw_pixels(&mut self, pixels: &[(u32, u32)]) -> bool;
     fn update(&mut self);
+    fn draw(&mut self);
     fn pending_close(&self) -> bool;
     fn play_sound(&mut self);
     fn stop_sound(&mut self);
@@ -231,6 +232,7 @@ impl Emulator {
         while !self.platform.pending_close() {
             self.platform.update();
             self.emulation_step();
+            self.platform.draw();
             ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
         }
     }

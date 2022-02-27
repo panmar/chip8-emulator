@@ -83,25 +83,12 @@ impl SDLPlatform {
 
     fn draw_pixel_no_present(&mut self, x: u32, y: u32) -> bool {
         let mut xored = false;
-        let mut color = Color::RGB(255, 255, 255);
         if self.drawn_pixels.contains(&(x, y)) {
-            color = Color::RGB(0, 0, 0);
             self.drawn_pixels.remove(&(x, y));
             xored = true;
         } else {
             self.drawn_pixels.insert((x, y));
         }
-
-        self.canvas.set_draw_color(color);
-        let pixel_size = 20u32;
-        self.canvas
-            .fill_rect(Rect::new(
-                pixel_size as i32 * x as i32,
-                pixel_size as i32 * y as i32,
-                pixel_size,
-                pixel_size,
-            ))
-            .unwrap();
 
         return xored;
     }
@@ -109,9 +96,7 @@ impl SDLPlatform {
 
 impl Platform for SDLPlatform {
     fn clear_display(&mut self) {
-        self.canvas.set_draw_color(Color::RGB(0, 0, 0));
-        self.canvas.clear();
-        self.canvas.present();
+        self.drawn_pixels.clear();
     }
 
     fn draw_pixels(&mut self, pixels: &[(u32, u32)]) -> bool {
@@ -119,9 +104,6 @@ impl Platform for SDLPlatform {
         for pixel in pixels {
             xored |= self.draw_pixel_no_present(pixel.0, pixel.1);
         }
-
-        self.canvas.present();
-
         return xored;
     }
 
@@ -137,6 +119,27 @@ impl Platform for SDLPlatform {
                 _ => {}
             }
         }
+    }
+
+    fn draw(&mut self) {
+        self.canvas.set_draw_color(Color::RGB(0, 0, 0));
+        self.canvas.clear();
+
+        self.canvas.set_draw_color(Color::RGB(255, 255, 255));
+        let pixel_size = 20u32;
+
+        for pixel in self.drawn_pixels.iter() {
+            self.canvas
+                .fill_rect(Rect::new(
+                    pixel_size as i32 * pixel.0 as i32,
+                    pixel_size as i32 * pixel.1 as i32,
+                    pixel_size,
+                    pixel_size,
+                ))
+                .unwrap();
+        }
+
+        self.canvas.present();
     }
 
     fn pending_close(&self) -> bool {
