@@ -3,7 +3,7 @@
 
 extern crate sdl2;
 
-use crate::chip8::{Platform, SCREEN_HEIGHT, SCREEN_WIDTH, Key};
+use crate::chip8::{Key, Platform, SCREEN_HEIGHT, SCREEN_WIDTH};
 use sdl2::{
     audio::{AudioCallback, AudioDevice, AudioSpecDesired},
     event::Event,

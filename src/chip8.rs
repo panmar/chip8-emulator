@@ -275,12 +275,127 @@ impl Emulator {
     pub fn new(platform: Box<dyn Platform>) -> Emulator {
         let mut cpu: Cpu = unsafe { mem::zeroed() };
         cpu.stack_index = -1;
-        let memory: [u8; 4096] = unsafe { mem::zeroed() };
+        let mut memory: [u8; 4096] = unsafe { mem::zeroed() };
+        Emulator::load_font_data(&mut memory);
         Emulator {
             cpu,
             memory,
             platform,
         }
+    }
+
+    fn load_font_data(memory: &mut [u8]) {
+        // "0"
+        memory[0x0000 + 0] = 0xF0;
+        memory[0x0000 + 2] = 0x90;
+        memory[0x0000 + 4] = 0x90;
+        memory[0x0000 + 6] = 0x90;
+        memory[0x0000 + 8] = 0xF0;
+
+        // "1"
+        memory[0x000A + 0] = 0x20;
+        memory[0x000A + 2] = 0x60;
+        memory[0x000A + 4] = 0x20;
+        memory[0x000A + 6] = 0x20;
+        memory[0x000A + 8] = 0x70;
+
+        // "2"
+        memory[0x0014 + 0] = 0xF0;
+        memory[0x0014 + 2] = 0x10;
+        memory[0x0014 + 4] = 0xF0;
+        memory[0x0014 + 6] = 0x80;
+        memory[0x0014 + 8] = 0xF0;
+
+        // "3"
+        memory[0x001E + 0] = 0xF0;
+        memory[0x001E + 2] = 0x10;
+        memory[0x001E + 4] = 0xF0;
+        memory[0x001E + 6] = 0x10;
+        memory[0x001E + 8] = 0xF0;
+
+        // "4"
+        memory[0x0028 + 0] = 0x90;
+        memory[0x0028 + 2] = 0x90;
+        memory[0x0028 + 4] = 0xF0;
+        memory[0x0028 + 6] = 0x10;
+        memory[0x0028 + 8] = 0x10;
+
+        // "5"
+        memory[0x0032 + 0] = 0xF0;
+        memory[0x0032 + 2] = 0x80;
+        memory[0x0032 + 4] = 0xF0;
+        memory[0x0032 + 6] = 0x10;
+        memory[0x0032 + 8] = 0xF0;
+
+        // "6"
+        memory[0x003C + 0] = 0xF0;
+        memory[0x003C + 2] = 0x80;
+        memory[0x003C + 4] = 0xF0;
+        memory[0x003C + 6] = 0x90;
+        memory[0x003C + 8] = 0xF0;
+
+        // "7"
+        memory[0x0046 + 0] = 0xF0;
+        memory[0x0046 + 2] = 0x10;
+        memory[0x0046 + 4] = 0x20;
+        memory[0x0046 + 6] = 0x40;
+        memory[0x0046 + 8] = 0x40;
+
+        // "8"
+        memory[0x0050 + 0] = 0xF0;
+        memory[0x0050 + 2] = 0x90;
+        memory[0x0050 + 4] = 0xF0;
+        memory[0x0050 + 6] = 0x90;
+        memory[0x0050 + 8] = 0xF0;
+
+        // "9"
+        memory[0x005A + 0] = 0xF0;
+        memory[0x005A + 2] = 0x90;
+        memory[0x005A + 4] = 0xF0;
+        memory[0x005A + 6] = 0x10;
+        memory[0x005A + 8] = 0xF0;
+
+        // "A"
+        memory[0x0064 + 0] = 0xF0;
+        memory[0x0064 + 2] = 0x90;
+        memory[0x0064 + 4] = 0xF0;
+        memory[0x0064 + 6] = 0x90;
+        memory[0x0064 + 8] = 0x90;
+
+        // "B"
+        memory[0x006E + 0] = 0xE0;
+        memory[0x006E + 2] = 0x90;
+        memory[0x006E + 4] = 0xE0;
+        memory[0x006E + 6] = 0x90;
+        memory[0x006E + 8] = 0xE0;
+
+        // "C"
+        memory[0x0078 + 0] = 0xF0;
+        memory[0x0078 + 2] = 0x80;
+        memory[0x0078 + 4] = 0x80;
+        memory[0x0078 + 6] = 0x80;
+        memory[0x0078 + 8] = 0xF0;
+
+        // "D"
+        memory[0x0082 + 0] = 0xE0;
+        memory[0x0082 + 2] = 0x90;
+        memory[0x0082 + 4] = 0x90;
+        memory[0x0082 + 6] = 0x90;
+        memory[0x0082 + 8] = 0xE0;
+
+        // "E"
+        memory[0x008C + 0] = 0xF0;
+        memory[0x008C + 2] = 0x80;
+        memory[0x008C + 4] = 0xF0;
+        memory[0x008C + 6] = 0x80;
+        memory[0x008C + 8] = 0xF0;
+
+        // "F"
+        memory[0x0096 + 0] = 0xF0;
+        memory[0x0096 + 2] = 0x80;
+        memory[0x0096 + 4] = 0xF0;
+        memory[0x0096 + 6] = 0x80;
+        memory[0x0096 + 8] = 0x80;
     }
 
     pub fn load_program_from_file(&mut self, filepath: &str) {
@@ -503,7 +618,28 @@ impl Emulator {
             AddRegToAddressWithoutCarry { register } => {
                 cpu.register_i += cpu.registers[register] as u16
             }
-            AssignFontSpriteToAddress { register } => {}
+            AssignFontSpriteToAddress { register } => {
+                let character = cpu.registers[register];
+                cpu.register_i = match character {
+                    0 => 0x0000,
+                    1 => 0x000A,
+                    2 => 0x0014,
+                    3 => 0x001E,
+                    4 => 0x0028,
+                    5 => 0x0032,
+                    6 => 0x003C,
+                    7 => 0x0046,
+                    8 => 0x0050,
+                    9 => 0x005A,
+                    0xA => 0x0064,
+                    0xB => 0x006E,
+                    0xC => 0x0078,
+                    0xD => 0x0082,
+                    0xE => 0x008C,
+                    0xF => 0x0096,
+                    _ => cpu.register_i,
+                }
+            }
             StoreRegBcd { register } => {
                 let mut value = cpu.registers[register];
                 memory[(cpu.register_i + 2) as usize] = value % 10;
