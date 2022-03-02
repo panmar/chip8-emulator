@@ -271,92 +271,6 @@ impl Instruction {
             _ => Unknown { opcode },
         }
     }
-
-    fn to_opcode(&self) -> u16 {
-        use Instruction::*;
-        let opcode = match self {
-            ClearDisplay => 0x00E0,
-            Return => 0x00EE,
-            Jump { address } => 0x1000 | address,
-            Call { address } => 0x2000 | address,
-            CondRegEqConstant { register, constant } => {
-                0x3000 | ((*register as u16) << 8) | (*constant as u16)
-            }
-            CondRegNotEqConstant { register, constant } => {
-                0x4000 | ((*register as u16) << 8) | (*constant as u16)
-            }
-            CondRegEqReg {
-                register_lhs,
-                register_rhs,
-            } => 0x5000 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
-            AssignConstToReg { register, constant } => {
-                0x6000 | ((*register as u16) << 8) | (*constant as u16)
-            }
-            AddConstToReg { register, constant } => {
-                0x7000 | ((*register as u16) << 8) | (*constant as u16)
-            }
-            AssignRegToReg {
-                register_lhs,
-                register_rhs,
-            } => 0x8000 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
-            BitwiseOr {
-                register_lhs,
-                register_rhs,
-            } => 0x8001 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
-            BitwiseAnd {
-                register_lhs,
-                register_rhs,
-            } => 0x8002 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
-            BitwiseXor {
-                register_lhs,
-                register_rhs,
-            } => 0x8003 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
-            AddRegToReg {
-                register_lhs,
-                register_rhs,
-            } => 0x8004 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
-            SubReg2FromReg1 {
-                register_lhs,
-                register_rhs,
-            } => 0x8005 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
-            BitwiseShrBy1 { register } => 0x8006 | ((*register as u16) << 8),
-            SubReg1FromReg2 {
-                register_lhs,
-                register_rhs,
-            } => 0x8007 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
-            BitwiseShlBy1 { register } => 0x800E | ((*register as u16) << 8),
-            CondRegNotEqReg {
-                register_lhs,
-                register_rhs,
-            } => 0x9000 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
-            SetAddress { address } => 0xA000 | address,
-            JumpWithV0Offset { address } => 0xB000 | address,
-            BitwiseAndWithRand { register, constant } => {
-                0xC000 | ((*register as u16) << 8) | *constant as u16
-            }
-            DisplaySprite {
-                register_x,
-                register_y,
-                n_bytes,
-            } => {
-                0xD000 | ((*register_x as u16) << 8) | ((*register_y as u16) << 4) | *n_bytes as u16
-            }
-            CondKeyPressed { register } => 0xE09E | ((*register as u16) << 8),
-            CondKeyNotPressed { register } => 0xE0A1 | ((*register as u16) << 8),
-            AssignDelayTimerToReg { register } => 0xF007 | ((*register as u16) << 8),
-            AwaitAndSetKeyPress { register } => 0xF00A | ((*register as u16) << 8),
-            SetDelayTimer { register } => 0xF015 | ((*register as u16) << 8),
-            SetSoundTimer { register } => 0xF018 | ((*register as u16) << 8),
-            AddRegToAddressWithoutCarry { register } => 0xF01E | ((*register as u16) << 8),
-            AssignFontSpriteToAddress { register } => 0xF029 | ((*register as u16) << 8),
-            StoreRegBcd { register } => 0xF033 | ((*register as u16) << 8),
-            SaveRegisters { last_register } => 0xF055 | ((*last_register as u16) << 8),
-            LoadRegisters { last_register } => 0xF065 | ((*last_register as u16) << 8),
-
-            Unknown { opcode } => *opcode,
-        };
-        return opcode;
-    }
 }
 
 impl Emulator {
@@ -498,16 +412,6 @@ impl Emulator {
         }
 
         self.cpu.program_counter = 512;
-    }
-
-    fn load_program_from_instructions(&mut self, instructions: &Vec<Instruction>) {
-        let mut data: Vec<u8> = Vec::new();
-        for instruction in instructions {
-            let opcode = instruction.to_opcode();
-            data.push(((opcode & 0xFF00) >> 8) as u8);
-            data.push((opcode & 0x00FF) as u8);
-        }
-        self.load_program_from_data(&data);
     }
 
     pub fn run(&mut self) {
@@ -802,7 +706,6 @@ impl Emulator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::sdl_platform::SDLPlatform;
     use assert_hex::assert_eq_hex;
 
     #[test]
@@ -873,6 +776,106 @@ mod tests {
         }
         fn play_sound(&mut self) {}
         fn stop_sound(&mut self) {}
+    }
+
+    impl Emulator {
+        fn load_program_from_instructions(&mut self, instructions: &Vec<Instruction>) {
+            let mut data: Vec<u8> = Vec::new();
+            for instruction in instructions {
+                let opcode = instruction.to_opcode();
+                data.push(((opcode & 0xFF00) >> 8) as u8);
+                data.push((opcode & 0x00FF) as u8);
+            }
+            self.load_program_from_data(&data);
+        }
+    }
+
+    impl Instruction {
+        fn to_opcode(&self) -> u16 {
+            use Instruction::*;
+            let opcode = match self {
+                ClearDisplay => 0x00E0,
+                Return => 0x00EE,
+                Jump { address } => 0x1000 | address,
+                Call { address } => 0x2000 | address,
+                CondRegEqConstant { register, constant } => {
+                    0x3000 | ((*register as u16) << 8) | (*constant as u16)
+                }
+                CondRegNotEqConstant { register, constant } => {
+                    0x4000 | ((*register as u16) << 8) | (*constant as u16)
+                }
+                CondRegEqReg {
+                    register_lhs,
+                    register_rhs,
+                } => 0x5000 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
+                AssignConstToReg { register, constant } => {
+                    0x6000 | ((*register as u16) << 8) | (*constant as u16)
+                }
+                AddConstToReg { register, constant } => {
+                    0x7000 | ((*register as u16) << 8) | (*constant as u16)
+                }
+                AssignRegToReg {
+                    register_lhs,
+                    register_rhs,
+                } => 0x8000 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
+                BitwiseOr {
+                    register_lhs,
+                    register_rhs,
+                } => 0x8001 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
+                BitwiseAnd {
+                    register_lhs,
+                    register_rhs,
+                } => 0x8002 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
+                BitwiseXor {
+                    register_lhs,
+                    register_rhs,
+                } => 0x8003 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
+                AddRegToReg {
+                    register_lhs,
+                    register_rhs,
+                } => 0x8004 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
+                SubReg2FromReg1 {
+                    register_lhs,
+                    register_rhs,
+                } => 0x8005 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
+                BitwiseShrBy1 { register } => 0x8006 | ((*register as u16) << 8),
+                SubReg1FromReg2 {
+                    register_lhs,
+                    register_rhs,
+                } => 0x8007 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
+                BitwiseShlBy1 { register } => 0x800E | ((*register as u16) << 8),
+                CondRegNotEqReg {
+                    register_lhs,
+                    register_rhs,
+                } => 0x9000 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
+                SetAddress { address } => 0xA000 | address,
+                JumpWithV0Offset { address } => 0xB000 | address,
+                BitwiseAndWithRand { register, constant } => {
+                    0xC000 | ((*register as u16) << 8) | *constant as u16
+                }
+                DisplaySprite {
+                    register_x,
+                    register_y,
+                    n_bytes,
+                } => {
+                    0xD000 | ((*register_x as u16) << 8) | ((*register_y as u16) << 4) | *n_bytes as u16
+                }
+                CondKeyPressed { register } => 0xE09E | ((*register as u16) << 8),
+                CondKeyNotPressed { register } => 0xE0A1 | ((*register as u16) << 8),
+                AssignDelayTimerToReg { register } => 0xF007 | ((*register as u16) << 8),
+                AwaitAndSetKeyPress { register } => 0xF00A | ((*register as u16) << 8),
+                SetDelayTimer { register } => 0xF015 | ((*register as u16) << 8),
+                SetSoundTimer { register } => 0xF018 | ((*register as u16) << 8),
+                AddRegToAddressWithoutCarry { register } => 0xF01E | ((*register as u16) << 8),
+                AssignFontSpriteToAddress { register } => 0xF029 | ((*register as u16) << 8),
+                StoreRegBcd { register } => 0xF033 | ((*register as u16) << 8),
+                SaveRegisters { last_register } => 0xF055 | ((*last_register as u16) << 8),
+                LoadRegisters { last_register } => 0xF065 | ((*last_register as u16) << 8),
+    
+                Unknown { opcode } => *opcode,
+            };
+            return opcode;
+        }
     }
 
     #[test]
