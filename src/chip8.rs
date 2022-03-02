@@ -6,9 +6,11 @@ use std::time::Duration;
 pub const SCREEN_WIDTH: u32 = 64;
 pub const SCREEN_HEIGHT: u32 = 32;
 
+const MEMORY_SIZE: usize = 4096;
+
 pub struct Emulator {
     cpu: Cpu,
-    memory: [u8; 4096],
+    memory: [u8; MEMORY_SIZE],
     platform: Box<dyn Platform>,
 }
 
@@ -269,13 +271,99 @@ impl Instruction {
             _ => Unknown { opcode },
         }
     }
+
+    fn to_opcode(&self) -> u16 {
+        use Instruction::*;
+        let opcode = match self {
+            ClearDisplay => 0x00E0,
+            Return => 0x00EE,
+            Jump { address } => 0x1000 | address,
+            Call { address } => 0x2000 | address,
+            CondRegEqConstant { register, constant } => {
+                0x3000 | ((*register as u16) << 8) | (*constant as u16)
+            }
+            CondRegNotEqConstant { register, constant } => {
+                0x4000 | ((*register as u16) << 8) | (*constant as u16)
+            }
+            CondRegEqReg {
+                register_lhs,
+                register_rhs,
+            } => 0x5000 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
+            AssignConstToReg { register, constant } => {
+                0x6000 | ((*register as u16) << 8) | (*constant as u16)
+            }
+            AddConstToReg { register, constant } => {
+                0x7000 | ((*register as u16) << 8) | (*constant as u16)
+            }
+            AssignRegToReg {
+                register_lhs,
+                register_rhs,
+            } => 0x8000 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
+            BitwiseOr {
+                register_lhs,
+                register_rhs,
+            } => 0x8001 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
+            BitwiseAnd {
+                register_lhs,
+                register_rhs,
+            } => 0x8002 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
+            BitwiseXor {
+                register_lhs,
+                register_rhs,
+            } => 0x8003 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
+            AddRegToReg {
+                register_lhs,
+                register_rhs,
+            } => 0x8004 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
+            SubReg2FromReg1 {
+                register_lhs,
+                register_rhs,
+            } => 0x8005 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
+            BitwiseShrBy1 { register } => 0x8006 | ((*register as u16) << 8),
+            SubReg1FromReg2 {
+                register_lhs,
+                register_rhs,
+            } => 0x8007 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
+            BitwiseShlBy1 { register } => 0x800E | ((*register as u16) << 8),
+            CondRegNotEqReg {
+                register_lhs,
+                register_rhs,
+            } => 0x9000 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
+            SetAddress { address } => 0xA000 | address,
+            JumpWithV0Offset { address } => 0xB000 | address,
+            BitwiseAndWithRand { register, constant } => {
+                0xC000 | ((*register as u16) << 8) | *constant as u16
+            }
+            DisplaySprite {
+                register_x,
+                register_y,
+                n_bytes,
+            } => {
+                0xD000 | ((*register_x as u16) << 8) | ((*register_y as u16) << 4) | *n_bytes as u16
+            }
+            CondKeyPressed { register } => 0xE09E | ((*register as u16) << 8),
+            CondKeyNotPressed { register } => 0xE0A1 | ((*register as u16) << 8),
+            AssignDelayTimerToReg { register } => 0xF007 | ((*register as u16) << 8),
+            AwaitAndSetKeyPress { register } => 0xF00A | ((*register as u16) << 8),
+            SetDelayTimer { register } => 0xF015 | ((*register as u16) << 8),
+            SetSoundTimer { register } => 0xF018 | ((*register as u16) << 8),
+            AddRegToAddressWithoutCarry { register } => 0xF01E | ((*register as u16) << 8),
+            AssignFontSpriteToAddress { register } => 0xF029 | ((*register as u16) << 8),
+            StoreRegBcd { register } => 0xF033 | ((*register as u16) << 8),
+            SaveRegisters { last_register } => 0xF055 | ((*last_register as u16) << 8),
+            LoadRegisters { last_register } => 0xF065 | ((*last_register as u16) << 8),
+
+            Unknown { opcode } => *opcode,
+        };
+        return opcode;
+    }
 }
 
 impl Emulator {
     pub fn new(platform: Box<dyn Platform>) -> Emulator {
         let mut cpu: Cpu = unsafe { mem::zeroed() };
         cpu.stack_index = -1;
-        let mut memory: [u8; 4096] = unsafe { mem::zeroed() };
+        let mut memory: [u8; MEMORY_SIZE] = unsafe { mem::zeroed() };
         Emulator::load_font_data(&mut memory);
         Emulator {
             cpu,
@@ -410,6 +498,16 @@ impl Emulator {
         }
 
         self.cpu.program_counter = 512;
+    }
+
+    fn load_program_from_instructions(&mut self, instructions: &Vec<Instruction>) {
+        let mut data: Vec<u8> = Vec::new();
+        for instruction in instructions {
+            let opcode = instruction.to_opcode();
+            data.push(((opcode & 0xFF00) >> 8) as u8);
+            data.push((opcode & 0x00FF) as u8);
+        }
+        self.load_program_from_data(&data);
     }
 
     pub fn run(&mut self) {
@@ -673,15 +771,15 @@ impl Emulator {
 
         let instruction = Instruction::parse(opcode);
 
-        // print!(
-        //     "[{:#06x}] instruction: {:#06x}",
-        //     self.cpu.program_counter, opcode
-        // );
-        // print!(" ");
-        // for i in 0..0xf {
-        //     print!("r[{}]={} ", i, self.cpu.registers[i as usize]);
-        // }
-        // println!();
+        print!(
+            "[{:#06x}] instruction: {:#06x}",
+            self.cpu.program_counter, opcode
+        );
+        print!(" ");
+        for i in 0..0xf {
+            print!("r[{}]={} ", i, self.cpu.registers[i as usize]);
+        }
+        println!();
 
         // TODO(panmar): This is a hack, probably should be inside execution
         self.cpu.program_counter += 2;
@@ -698,5 +796,111 @@ impl Emulator {
         if self.cpu.delay_timer > 0 {
             self.cpu.delay_timer = self.cpu.delay_timer - 1;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sdl_platform::SDLPlatform;
+    use assert_hex::assert_eq_hex;
+
+    #[test]
+    #[rustfmt::skip]
+    fn should_convert_from_instruction_to_opcode() {
+        use Instruction::*;
+        assert_eq_hex!(ClearDisplay.to_opcode(), 0x00E0);
+        assert_eq_hex!(Return.to_opcode(), 0x00EE);
+        assert_eq_hex!(Jump{address: 0x04F1}.to_opcode(), 0x14F1);
+        assert_eq_hex!(Call{address: 0x07AB}.to_opcode(), 0x27AB);
+        assert_eq_hex!(CondRegEqConstant{register: 0xA, constant: 0xC3}.to_opcode(), 0x3AC3);
+        assert_eq_hex!(CondRegNotEqConstant{register: 1, constant: 0x23}.to_opcode(), 0x4123);
+        assert_eq_hex!(CondRegEqReg{register_lhs: 0xA, register_rhs: 0xD}.to_opcode(), 0x5AD0);
+        assert_eq_hex!(AssignConstToReg{register: 7, constant: 0xAF}.to_opcode(), 0x67AF);
+        assert_eq_hex!(AddConstToReg{register: 0xC, constant: 0x42}.to_opcode(), 0x7C42);
+        assert_eq_hex!(AssignRegToReg{register_lhs: 0x9, register_rhs: 0x3}.to_opcode(), 0x8930);
+        assert_eq_hex!(BitwiseOr{register_lhs: 0x5, register_rhs: 0xF}.to_opcode(), 0x85F1);
+        assert_eq_hex!(BitwiseAnd{register_lhs: 0x5, register_rhs: 0xF}.to_opcode(), 0x85F2);
+        assert_eq_hex!(BitwiseXor{register_lhs: 0x5, register_rhs: 0xF}.to_opcode(), 0x85F3);
+        assert_eq_hex!(AddRegToReg{register_lhs: 0x6, register_rhs: 0x0}.to_opcode(), 0x8604);
+        assert_eq_hex!(SubReg2FromReg1{register_lhs: 0xA, register_rhs: 0xB}.to_opcode(), 0x8AB5);
+
+        // TODO(panmar): There is some ambiguity about this instruction;
+        // Y register (3rd digit) seems to be unused
+        assert_eq_hex!(BitwiseShrBy1{register: 0x9}.to_opcode(), 0x8906);
+
+        assert_eq_hex!(SubReg1FromReg2{register_lhs: 0xA, register_rhs: 0xB}.to_opcode(), 0x8AB7);
+
+        // TODO(panmar): There is some ambiguity about this instruction;
+        // Y register (3rd digit) seems to be unused
+        assert_eq_hex!(BitwiseShlBy1{register: 0x9}.to_opcode(), 0x890E);
+
+        assert_eq_hex!(CondRegNotEqReg{register_lhs: 0xA, register_rhs: 0xB}.to_opcode(), 0x9AB0);
+        assert_eq_hex!(SetAddress{address: 0x123}.to_opcode(), 0xA123);
+        assert_eq_hex!(JumpWithV0Offset{address: 0x123}.to_opcode(), 0xB123);
+        assert_eq_hex!(BitwiseAndWithRand{register: 0xA, constant: 0xB4}.to_opcode(), 0xCAB4);
+        assert_eq_hex!(DisplaySprite{register_x: 0xA, register_y: 0xB, n_bytes: 9}.to_opcode(), 0xDAB9);
+        assert_eq_hex!(CondKeyPressed{register: 0x5}.to_opcode(), 0xE59E);
+        assert_eq_hex!(CondKeyNotPressed{register: 0x5}.to_opcode(), 0xE5A1);
+        assert_eq_hex!(AssignDelayTimerToReg{register: 0x5}.to_opcode(), 0xF507);
+        assert_eq_hex!(AwaitAndSetKeyPress{register: 0x5}.to_opcode(), 0xF50A);
+        assert_eq_hex!(SetDelayTimer{register: 0x3}.to_opcode(), 0xF315);
+        assert_eq_hex!(SetSoundTimer{register: 0x3}.to_opcode(), 0xF318);
+        assert_eq_hex!(AddRegToAddressWithoutCarry{register: 0x5}.to_opcode(), 0xF51E);
+        assert_eq_hex!(AssignFontSpriteToAddress{register: 0x5}.to_opcode(), 0xF529);
+        assert_eq_hex!(StoreRegBcd{register: 0x7}.to_opcode(), 0xF733);
+        assert_eq_hex!(SaveRegisters{last_register: 0x7}.to_opcode(), 0xF755);
+        assert_eq_hex!(LoadRegisters{last_register: 0x7}.to_opcode(), 0xF765);
+    }
+
+    struct TestPlatform {}
+
+    impl Platform for TestPlatform {
+        fn clear_display(&mut self) {}
+        fn draw_pixels(&mut self, _pixels: &[(u32, u32)]) -> bool {
+            false
+        }
+        fn is_key_pressed(&self, _key: Key) -> bool {
+            false
+        }
+        fn get_key_pressed(&self) -> Option<Key> {
+            None
+        }
+        fn update(&mut self) {}
+        fn draw(&mut self) {}
+        fn pending_close(&self) -> bool {
+            false
+        }
+        fn play_sound(&mut self) {}
+        fn stop_sound(&mut self) {}
+    }
+
+    #[test]
+    #[ignore]
+    fn should_display_sprite_font() {
+        let mut emulator = Emulator::new(Box::new(TestPlatform {}));
+        use Instruction::*;
+        emulator.load_program_from_instructions(&vec![
+            ClearDisplay,
+            AssignConstToReg {
+                register: 0,
+                constant: 0xA,
+            },
+            AssignFontSpriteToAddress { register: 0x0 },
+            AssignConstToReg {
+                register: 1,
+                constant: 0xA,
+            },
+            AssignConstToReg {
+                register: 2,
+                constant: 0x5,
+            },
+            DisplaySprite {
+                register_x: 0x1,
+                register_y: 0x2,
+                n_bytes: 0xA,
+            },
+        ]);
+        emulator.run();
     }
 }
