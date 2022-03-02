@@ -880,29 +880,17 @@ mod tests {
 
     #[test]
     #[ignore]
+    #[rustfmt::skip]
     fn should_display_sprite_font() {
         let mut emulator = Emulator::new(Box::new(TestPlatform {}));
         use Instruction::*;
         emulator.load_program_from_instructions(&vec![
             ClearDisplay,
-            AssignConstToReg {
-                register: 0,
-                constant: 0xA,
-            },
+            AssignConstToReg { register: 0, constant: 0xA },
             AssignFontSpriteToAddress { register: 0x0 },
-            AssignConstToReg {
-                register: 1,
-                constant: 0xA,
-            },
-            AssignConstToReg {
-                register: 2,
-                constant: 0x5,
-            },
-            DisplaySprite {
-                register_x: 0x1,
-                register_y: 0x2,
-                n_bytes: 0xA,
-            },
+            AssignConstToReg { register: 1, constant: 0xA },
+            AssignConstToReg { register: 2, constant: 0x5 },
+            DisplaySprite { register_x: 0x1, register_y: 0x2, n_bytes: 0xA },
         ]);
         emulator.run();
     }
