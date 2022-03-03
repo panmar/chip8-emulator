@@ -110,24 +110,29 @@ impl Platform for SDLPlatform {
     }
 
     fn is_key_pressed(&self, key: Key) -> bool {
+        // NOTE(panmar): Use more convenient QWERTY keyboard mapping
+        // 1 2 3 C                 1 2 3 4
+        // 4 5 6 D      ====>      Q W E R
+        // 7 8 9 E      ====>      A S D F
+        // A 0 B F                 Z X C V
         for code in self.pressed_keys.iter() {
             let code_as_i32 = match code {
-                Keycode::Num0 => 0,
                 Keycode::Num1 => 1,
                 Keycode::Num2 => 2,
                 Keycode::Num3 => 3,
-                Keycode::Num4 => 4,
-                Keycode::Num5 => 5,
-                Keycode::Num6 => 6,
-                Keycode::Num7 => 7,
-                Keycode::Num8 => 8,
-                Keycode::Num9 => 9,
-                Keycode::A => 10,
-                Keycode::B => 11,
-                Keycode::C => 12,
-                Keycode::D => 13,
-                Keycode::E => 14,
-                Keycode::F => 15,
+                Keycode::Q => 4,
+                Keycode::W => 5,
+                Keycode::E => 6,
+                Keycode::A => 7,
+                Keycode::S => 8,
+                Keycode::D => 9,
+                Keycode::Z => 0xA,
+                Keycode::X => 0,
+                Keycode::C => 0xB,
+                Keycode::Num4 => 0xC,
+                Keycode::R => 0xD,
+                Keycode::F => 0xE,
+                Keycode::V => 0xF,
                 _ => 42,
             };
             if code_as_i32 == key.value() {
