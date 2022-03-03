@@ -2,6 +2,7 @@ use rand::Rng;
 use std::fs;
 use std::mem;
 use std::time::Duration;
+use std::time::Instant;
 
 pub const SCREEN_WIDTH: u32 = 64;
 pub const SCREEN_HEIGHT: u32 = 32;
@@ -415,18 +416,79 @@ impl Emulator {
     }
 
     pub fn run(&mut self) {
+        fn execute_if_elapsed(
+            emulator: &mut Emulator,
+            func: &dyn Fn(&mut Emulator),
+            elapsed_time: &mut Instant,
+            elapsed_time_limit: Duration,
+        ) {
+            if elapsed_time.elapsed() > elapsed_time_limit {
+                func(emulator);
+                *elapsed_time = Instant::now();
+            }
+        }
+        let mut cpu_step_timer = Instant::now();
+        let mut render_step_timer = Instant::now();
+        let mut sound_timer = Instant::now();
+        let mut delay_timer = Instant::now();
         while !self.platform.pending_close() {
             self.platform.update();
-            self.emulation_step();
-            self.platform.draw();
-            ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
+            execute_if_elapsed(
+                self,
+                &Emulator::emulation_step,
+                &mut cpu_step_timer,
+                Duration::from_millis(2),
+            );
+
+            execute_if_elapsed(
+                self,
+                &Emulator::sound_update,
+                &mut sound_timer,
+                Duration::from_micros(16666),
+            );
+
+            execute_if_elapsed(
+                self,
+                &Emulator::timer_update,
+                &mut delay_timer,
+                Duration::from_micros(16666),
+            );
+
+            execute_if_elapsed(
+                self,
+                &Emulator::draw,
+                &mut render_step_timer,
+                Duration::from_micros(16666),
+            );
         }
+    }
+
+    fn sound_update(&mut self) {
+        if self.cpu.sound_timer > 0 {
+            self.platform.play_sound();
+            self.cpu.sound_timer = self.cpu.sound_timer - 1;
+        } else {
+            self.platform.stop_sound();
+        }
+    }
+
+    fn timer_update(&mut self) {
+        if self.cpu.delay_timer > 0 {
+            self.cpu.delay_timer = self.cpu.delay_timer - 1;
+        }
+    }
+
+    fn draw(&mut self) {
+        self.platform.draw();
     }
 
     fn execute(&mut self, instruction: Instruction) {
         let cpu = &mut self.cpu;
         let memory = &mut self.memory;
         let platform = &mut self.platform;
+
+        // NOTE(panmar): Increase the counter prematurely
+        cpu.program_counter += 2;
 
         use Instruction::*;
         match instruction {
@@ -675,31 +737,17 @@ impl Emulator {
 
         let instruction = Instruction::parse(opcode);
 
-        print!(
-            "[{:#06x}] instruction: {:#06x}",
-            self.cpu.program_counter, opcode
-        );
-        print!(" ");
-        for i in 0..0xf {
-            print!("r[{}]={} ", i, self.cpu.registers[i as usize]);
-        }
-        println!();
-
-        // TODO(panmar): This is a hack, probably should be inside execution
-        self.cpu.program_counter += 2;
+        // print!(
+        //     "[{:#06x}] instruction: {:#06x}",
+        //     self.cpu.program_counter, opcode
+        // );
+        // print!(" ");
+        // for i in 0..0xf {
+        //     print!("r[{}]={} ", i, self.cpu.registers[i as usize]);
+        // }
+        // println!();
 
         self.execute(instruction);
-
-        if self.cpu.sound_timer > 0 {
-            self.platform.play_sound();
-            self.cpu.sound_timer = self.cpu.sound_timer - 1;
-        } else {
-            self.platform.stop_sound();
-        }
-
-        if self.cpu.delay_timer > 0 {
-            self.cpu.delay_timer = self.cpu.delay_timer - 1;
-        }
     }
 }
 
@@ -858,7 +906,10 @@ mod tests {
                     register_y,
                     n_bytes,
                 } => {
-                    0xD000 | ((*register_x as u16) << 8) | ((*register_y as u16) << 4) | *n_bytes as u16
+                    0xD000
+                        | ((*register_x as u16) << 8)
+                        | ((*register_y as u16) << 4)
+                        | *n_bytes as u16
                 }
                 CondKeyPressed { register } => 0xE09E | ((*register as u16) << 8),
                 CondKeyNotPressed { register } => 0xE0A1 | ((*register as u16) << 8),
@@ -871,7 +922,7 @@ mod tests {
                 StoreRegBcd { register } => 0xF033 | ((*register as u16) << 8),
                 SaveRegisters { last_register } => 0xF055 | ((*last_register as u16) << 8),
                 LoadRegisters { last_register } => 0xF065 | ((*last_register as u16) << 8),
-    
+
                 Unknown { opcode } => *opcode,
             };
             return opcode;
