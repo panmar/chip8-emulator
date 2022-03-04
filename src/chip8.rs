@@ -487,9 +487,6 @@ impl Emulator {
         let memory = &mut self.memory;
         let platform = &mut self.platform;
 
-        // NOTE(panmar): Increase the counter prematurely
-        cpu.program_counter += 2;
-
         use Instruction::*;
         match instruction {
             ClearDisplay => platform.clear_display(),
@@ -730,16 +727,13 @@ impl Emulator {
     }
 
     fn emulation_step(&mut self) {
-        let opcode = u16::from_be_bytes([
-            self.memory[self.cpu.program_counter as usize],
-            self.memory[(self.cpu.program_counter + 1) as usize],
-        ]);
 
+        let opcode = self.fetch_opcode().unwrap();
         let instruction = Instruction::parse(opcode);
 
         // print!(
         //     "[{:#06x}] instruction: {:#06x}",
-        //     self.cpu.program_counter, opcode
+        //     self.cpu.program_counter - 2, opcode
         // );
         // print!(" ");
         // for i in 0..0xf {
@@ -748,6 +742,16 @@ impl Emulator {
         // println!();
 
         self.execute(instruction);
+    }
+
+    fn fetch_opcode(&mut self) -> Option<u16> {
+        let opcode = u16::from_be_bytes([
+            self.memory[self.cpu.program_counter as usize],
+            self.memory[(self.cpu.program_counter + 1) as usize],
+        ]);
+
+        self.cpu.program_counter += 2;
+        return Some(opcode);
     }
 }
 
