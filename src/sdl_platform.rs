@@ -171,13 +171,14 @@ impl SDLPlatform {
         self.canvas.set_draw_color(Color::RGB(255, 255, 255));
         let pixel_size = 20u32;
 
+        let padding = 2;
         for pixel in emulator.active_pixels.iter() {
             self.canvas
                 .fill_rect(Rect::new(
                     pixel_size as i32 * pixel.0 as i32,
                     pixel_size as i32 * pixel.1 as i32,
-                    pixel_size,
-                    pixel_size,
+                    pixel_size - 2 * padding,
+                    pixel_size - 2 * padding,
                 ))
                 .unwrap();
         }
