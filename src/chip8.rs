@@ -37,9 +37,9 @@ enum Instruction {
     SkipIfRegEqConstant { register: usize, constant: u8 },
     SkipIfRegNotEqConstant { register: usize, constant: u8 },
     SkipIfRegEqReg { register_lhs: usize, register_rhs: usize },
-    AssignConstToReg { register: usize, constant: u8 },
+    SetRegToConstant { register: usize, constant: u8 },
     AddConstToReg { register: usize, constant: u8 },
-    AssignRegToReg { register_lhs: usize, register_rhs: usize },
+    SetRegToReg { register_lhs: usize, register_rhs: usize },
     BitwiseOr { register_lhs: usize, register_rhs: usize },
     BitwiseAnd { register_lhs: usize, register_rhs: usize },
     BitwiseXor { register_lhs: usize, register_rhs: usize },
@@ -55,12 +55,12 @@ enum Instruction {
     DisplaySprite { register_x: usize, register_y: usize, n_bytes: usize },
     SkipIfKeyPressed { register: usize },
     SkipIfKeyNotPressed { register: usize },
-    AssignDelayTimerToReg { register: usize },
+    SetRegToDelayTimer { register: usize },
     AwaitAndSetKeyPress { register: usize },
     SetDelayTimer { register: usize },
     SetSoundTimer { register: usize },
     AddRegToAddressWithoutCarry { register: usize },
-    AssignFontSpriteToAddress { register: usize },
+    SetAddressOfFontChar { register: usize },
     StoreRegBcd { register: usize },
     SaveRegisters { last_register: usize },
     LoadRegisters { last_register: usize },
@@ -99,7 +99,7 @@ impl Instruction {
                 register_lhs: register_lhs as usize,
                 register_rhs: register_rhs as usize,
             },
-            [0x6, register, _, _] => AssignConstToReg {
+            [0x6, register, _, _] => SetRegToConstant {
                 register: register as usize,
                 constant: (opcode & 0x00ff) as u8,
             },
@@ -107,7 +107,7 @@ impl Instruction {
                 register: register as usize,
                 constant: (opcode & 0x00ff) as u8,
             },
-            [0x8, register_lhs, register_rhs, 0] => AssignRegToReg {
+            [0x8, register_lhs, register_rhs, 0] => SetRegToReg {
                 register_lhs: register_lhs as usize,
                 register_rhs: register_rhs as usize,
             },
@@ -166,7 +166,7 @@ impl Instruction {
             [0xE, register, 0xA, 0x1] => SkipIfKeyNotPressed {
                 register: register as usize,
             },
-            [0xF, register, 0x0, 0x7] => AssignDelayTimerToReg {
+            [0xF, register, 0x0, 0x7] => SetRegToDelayTimer {
                 register: register as usize,
             },
             [0xF, register, 0x0, 0xA] => AwaitAndSetKeyPress {
@@ -181,7 +181,7 @@ impl Instruction {
             [0xF, register, 0x1, 0xE] => AddRegToAddressWithoutCarry {
                 register: register as usize,
             },
-            [0xF, register, 0x2, 0x9] => AssignFontSpriteToAddress {
+            [0xF, register, 0x2, 0x9] => SetAddressOfFontChar {
                 register: register as usize,
             },
             [0xF, register, 0x3, 0x3] => StoreRegBcd {
@@ -215,13 +215,13 @@ impl Instruction {
                 register_lhs,
                 register_rhs,
             } => 0x5000 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
-            AssignConstToReg { register, constant } => {
+            SetRegToConstant { register, constant } => {
                 0x6000 | ((*register as u16) << 8) | (*constant as u16)
             }
             AddConstToReg { register, constant } => {
                 0x7000 | ((*register as u16) << 8) | (*constant as u16)
             }
-            AssignRegToReg {
+            SetRegToReg {
                 register_lhs,
                 register_rhs,
             } => 0x8000 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
@@ -269,12 +269,12 @@ impl Instruction {
             }
             SkipIfKeyPressed { register } => 0xE09E | ((*register as u16) << 8),
             SkipIfKeyNotPressed { register } => 0xE0A1 | ((*register as u16) << 8),
-            AssignDelayTimerToReg { register } => 0xF007 | ((*register as u16) << 8),
+            SetRegToDelayTimer { register } => 0xF007 | ((*register as u16) << 8),
             AwaitAndSetKeyPress { register } => 0xF00A | ((*register as u16) << 8),
             SetDelayTimer { register } => 0xF015 | ((*register as u16) << 8),
             SetSoundTimer { register } => 0xF018 | ((*register as u16) << 8),
             AddRegToAddressWithoutCarry { register } => 0xF01E | ((*register as u16) << 8),
-            AssignFontSpriteToAddress { register } => 0xF029 | ((*register as u16) << 8),
+            SetAddressOfFontChar { register } => 0xF029 | ((*register as u16) << 8),
             StoreRegBcd { register } => 0xF033 | ((*register as u16) << 8),
             SaveRegisters { last_register } => 0xF055 | ((*last_register as u16) << 8),
             LoadRegisters { last_register } => 0xF065 | ((*last_register as u16) << 8),
@@ -518,7 +518,7 @@ impl Emulator {
                     self.cpu.program_counter += 2;
                 }
             }
-            AssignConstToReg { register, constant } => self.cpu.registers[register] = constant,
+            SetRegToConstant { register, constant } => self.cpu.registers[register] = constant,
             AddConstToReg { register, constant } => {
                 let result = self.cpu.registers[register].overflowing_add(constant);
                 match result {
@@ -527,7 +527,7 @@ impl Emulator {
                     }
                 }
             }
-            AssignRegToReg {
+            SetRegToReg {
                 register_lhs,
                 register_rhs,
             } => self.cpu.registers[register_lhs] = self.cpu.registers[register_rhs],
@@ -671,9 +671,7 @@ impl Emulator {
                     self.cpu.program_counter += 2;
                 }
             }
-            AssignDelayTimerToReg { register } => {
-                self.cpu.registers[register] = self.cpu.delay_timer
-            }
+            SetRegToDelayTimer { register } => self.cpu.registers[register] = self.cpu.delay_timer,
             AwaitAndSetKeyPress { register } => {
                 let mut key_pressed = false;
                 for (i, input) in self.input.iter().enumerate() {
@@ -692,7 +690,7 @@ impl Emulator {
             AddRegToAddressWithoutCarry { register } => {
                 self.cpu.register_i += self.cpu.registers[register] as u16
             }
-            AssignFontSpriteToAddress { register } => {
+            SetAddressOfFontChar { register } => {
                 let character = self.cpu.registers[register];
                 self.cpu.register_i = match character {
                     0 => 0x0000,
@@ -769,9 +767,9 @@ mod tests {
         assert_eq_hex!(SkipIfRegEqConstant{register: 0xA, constant: 0xC3}.to_opcode(), 0x3AC3);
         assert_eq_hex!(SkipIfRegNotEqConstant{register: 1, constant: 0x23}.to_opcode(), 0x4123);
         assert_eq_hex!(SkipIfRegEqReg{register_lhs: 0xA, register_rhs: 0xD}.to_opcode(), 0x5AD0);
-        assert_eq_hex!(AssignConstToReg{register: 7, constant: 0xAF}.to_opcode(), 0x67AF);
+        assert_eq_hex!(SetRegToConstant{register: 7, constant: 0xAF}.to_opcode(), 0x67AF);
         assert_eq_hex!(AddConstToReg{register: 0xC, constant: 0x42}.to_opcode(), 0x7C42);
-        assert_eq_hex!(AssignRegToReg{register_lhs: 0x9, register_rhs: 0x3}.to_opcode(), 0x8930);
+        assert_eq_hex!(SetRegToReg{register_lhs: 0x9, register_rhs: 0x3}.to_opcode(), 0x8930);
         assert_eq_hex!(BitwiseOr{register_lhs: 0x5, register_rhs: 0xF}.to_opcode(), 0x85F1);
         assert_eq_hex!(BitwiseAnd{register_lhs: 0x5, register_rhs: 0xF}.to_opcode(), 0x85F2);
         assert_eq_hex!(BitwiseXor{register_lhs: 0x5, register_rhs: 0xF}.to_opcode(), 0x85F3);
@@ -795,12 +793,12 @@ mod tests {
         assert_eq_hex!(DisplaySprite{register_x: 0xA, register_y: 0xB, n_bytes: 9}.to_opcode(), 0xDAB9);
         assert_eq_hex!(SkipIfKeyPressed{register: 0x5}.to_opcode(), 0xE59E);
         assert_eq_hex!(SkipIfKeyNotPressed{register: 0x5}.to_opcode(), 0xE5A1);
-        assert_eq_hex!(AssignDelayTimerToReg{register: 0x5}.to_opcode(), 0xF507);
+        assert_eq_hex!(SetRegToDelayTimer{register: 0x5}.to_opcode(), 0xF507);
         assert_eq_hex!(AwaitAndSetKeyPress{register: 0x5}.to_opcode(), 0xF50A);
         assert_eq_hex!(SetDelayTimer{register: 0x3}.to_opcode(), 0xF315);
         assert_eq_hex!(SetSoundTimer{register: 0x3}.to_opcode(), 0xF318);
         assert_eq_hex!(AddRegToAddressWithoutCarry{register: 0x5}.to_opcode(), 0xF51E);
-        assert_eq_hex!(AssignFontSpriteToAddress{register: 0x5}.to_opcode(), 0xF529);
+        assert_eq_hex!(SetAddressOfFontChar{register: 0x5}.to_opcode(), 0xF529);
         assert_eq_hex!(StoreRegBcd{register: 0x7}.to_opcode(), 0xF733);
         assert_eq_hex!(SaveRegisters{last_register: 0x7}.to_opcode(), 0xF755);
         assert_eq_hex!(LoadRegisters{last_register: 0x7}.to_opcode(), 0xF765);
