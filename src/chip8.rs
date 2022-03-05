@@ -34,9 +34,9 @@ enum Instruction {
     Return,
     Jump { address: u16 },
     Call { address: u16 },
-    CondRegEqConstant { register: usize, constant: u8 },
-    CondRegNotEqConstant { register: usize, constant: u8 },
-    CondRegEqReg { register_lhs: usize, register_rhs: usize },
+    SkipIfRegEqConstant { register: usize, constant: u8 },
+    SkipIfRegNotEqConstant { register: usize, constant: u8 },
+    SkipIfRegEqReg { register_lhs: usize, register_rhs: usize },
     AssignConstToReg { register: usize, constant: u8 },
     AddConstToReg { register: usize, constant: u8 },
     AssignRegToReg { register_lhs: usize, register_rhs: usize },
@@ -53,8 +53,8 @@ enum Instruction {
     JumpWithV0Offset { address: u16 },
     BitwiseAndWithRand { register: usize, constant: u8 },
     DisplaySprite { register_x: usize, register_y: usize, n_bytes: usize },
-    CondKeyPressed { register: usize },
-    CondKeyNotPressed { register: usize },
+    SkipIfKeyPressed { register: usize },
+    SkipIfKeyNotPressed { register: usize },
     AssignDelayTimerToReg { register: usize },
     AwaitAndSetKeyPress { register: usize },
     SetDelayTimer { register: usize },
@@ -87,15 +87,15 @@ impl Instruction {
             [0x2, _, _, _] => Call {
                 address: opcode & 0x0fff,
             },
-            [0x3, register, _, _] => CondRegEqConstant {
+            [0x3, register, _, _] => SkipIfRegEqConstant {
                 register: register as usize,
                 constant: (opcode & 0x00ff) as u8,
             },
-            [0x4, register, _, _] => CondRegNotEqConstant {
+            [0x4, register, _, _] => SkipIfRegNotEqConstant {
                 register: register as usize,
                 constant: (opcode & 0x00ff) as u8,
             },
-            [0x5, register_lhs, register_rhs, 0] => CondRegEqReg {
+            [0x5, register_lhs, register_rhs, 0] => SkipIfRegEqReg {
                 register_lhs: register_lhs as usize,
                 register_rhs: register_rhs as usize,
             },
@@ -160,10 +160,10 @@ impl Instruction {
                 register_y: register_y as usize,
                 n_bytes: n_bytes as usize,
             },
-            [0xE, register, 0x9, 0xE] => CondKeyPressed {
+            [0xE, register, 0x9, 0xE] => SkipIfKeyPressed {
                 register: register as usize,
             },
-            [0xE, register, 0xA, 0x1] => CondKeyNotPressed {
+            [0xE, register, 0xA, 0x1] => SkipIfKeyNotPressed {
                 register: register as usize,
             },
             [0xF, register, 0x0, 0x7] => AssignDelayTimerToReg {
@@ -205,13 +205,13 @@ impl Instruction {
             Return => 0x00EE,
             Jump { address } => 0x1000 | address,
             Call { address } => 0x2000 | address,
-            CondRegEqConstant { register, constant } => {
+            SkipIfRegEqConstant { register, constant } => {
                 0x3000 | ((*register as u16) << 8) | (*constant as u16)
             }
-            CondRegNotEqConstant { register, constant } => {
+            SkipIfRegNotEqConstant { register, constant } => {
                 0x4000 | ((*register as u16) << 8) | (*constant as u16)
             }
-            CondRegEqReg {
+            SkipIfRegEqReg {
                 register_lhs,
                 register_rhs,
             } => 0x5000 | ((*register_lhs as u16) << 8) | ((*register_rhs as u16) << 4),
@@ -267,8 +267,8 @@ impl Instruction {
             } => {
                 0xD000 | ((*register_x as u16) << 8) | ((*register_y as u16) << 4) | *n_bytes as u16
             }
-            CondKeyPressed { register } => 0xE09E | ((*register as u16) << 8),
-            CondKeyNotPressed { register } => 0xE0A1 | ((*register as u16) << 8),
+            SkipIfKeyPressed { register } => 0xE09E | ((*register as u16) << 8),
+            SkipIfKeyNotPressed { register } => 0xE0A1 | ((*register as u16) << 8),
             AssignDelayTimerToReg { register } => 0xF007 | ((*register as u16) << 8),
             AwaitAndSetKeyPress { register } => 0xF00A | ((*register as u16) << 8),
             SetDelayTimer { register } => 0xF015 | ((*register as u16) << 8),
@@ -499,17 +499,17 @@ impl Emulator {
                 self.cpu.stack[self.cpu.stack_index as usize] = self.cpu.program_counter;
                 self.cpu.program_counter = address;
             }
-            CondRegEqConstant { register, constant } => {
+            SkipIfRegEqConstant { register, constant } => {
                 if self.cpu.registers[register] == constant {
                     self.cpu.program_counter += 2;
                 }
             }
-            CondRegNotEqConstant { register, constant } => {
+            SkipIfRegNotEqConstant { register, constant } => {
                 if self.cpu.registers[register] != constant {
                     self.cpu.program_counter += 2;
                 }
             }
-            CondRegEqReg {
+            SkipIfRegEqReg {
                 register_lhs,
                 register_rhs,
             } => {
@@ -658,13 +658,13 @@ impl Emulator {
                     self.cpu.registers[0xF] = 0;
                 }
             }
-            CondKeyPressed { register } => {
+            SkipIfKeyPressed { register } => {
                 let key = self.cpu.registers[register];
                 if self.input[key as usize] {
                     self.cpu.program_counter += 2;
                 }
             }
-            CondKeyNotPressed { register } => {
+            SkipIfKeyNotPressed { register } => {
                 let key = self.cpu.registers[register];
                 if !self.input[key as usize] {
                     self.cpu.program_counter += 2;
@@ -765,9 +765,9 @@ mod tests {
         assert_eq_hex!(Return.to_opcode(), 0x00EE);
         assert_eq_hex!(Jump{address: 0x04F1}.to_opcode(), 0x14F1);
         assert_eq_hex!(Call{address: 0x07AB}.to_opcode(), 0x27AB);
-        assert_eq_hex!(CondRegEqConstant{register: 0xA, constant: 0xC3}.to_opcode(), 0x3AC3);
-        assert_eq_hex!(CondRegNotEqConstant{register: 1, constant: 0x23}.to_opcode(), 0x4123);
-        assert_eq_hex!(CondRegEqReg{register_lhs: 0xA, register_rhs: 0xD}.to_opcode(), 0x5AD0);
+        assert_eq_hex!(SkipIfRegEqConstant{register: 0xA, constant: 0xC3}.to_opcode(), 0x3AC3);
+        assert_eq_hex!(SkipIfRegNotEqConstant{register: 1, constant: 0x23}.to_opcode(), 0x4123);
+        assert_eq_hex!(SkipIfRegEqReg{register_lhs: 0xA, register_rhs: 0xD}.to_opcode(), 0x5AD0);
         assert_eq_hex!(AssignConstToReg{register: 7, constant: 0xAF}.to_opcode(), 0x67AF);
         assert_eq_hex!(AddConstToReg{register: 0xC, constant: 0x42}.to_opcode(), 0x7C42);
         assert_eq_hex!(AssignRegToReg{register_lhs: 0x9, register_rhs: 0x3}.to_opcode(), 0x8930);
@@ -792,8 +792,8 @@ mod tests {
         assert_eq_hex!(JumpWithV0Offset{address: 0x123}.to_opcode(), 0xB123);
         assert_eq_hex!(BitwiseAndWithRand{register: 0xA, constant: 0xB4}.to_opcode(), 0xCAB4);
         assert_eq_hex!(DisplaySprite{register_x: 0xA, register_y: 0xB, n_bytes: 9}.to_opcode(), 0xDAB9);
-        assert_eq_hex!(CondKeyPressed{register: 0x5}.to_opcode(), 0xE59E);
-        assert_eq_hex!(CondKeyNotPressed{register: 0x5}.to_opcode(), 0xE5A1);
+        assert_eq_hex!(SkipIfKeyPressed{register: 0x5}.to_opcode(), 0xE59E);
+        assert_eq_hex!(SkipIfKeyNotPressed{register: 0x5}.to_opcode(), 0xE5A1);
         assert_eq_hex!(AssignDelayTimerToReg{register: 0x5}.to_opcode(), 0xF507);
         assert_eq_hex!(AwaitAndSetKeyPress{register: 0x5}.to_opcode(), 0xF50A);
         assert_eq_hex!(SetDelayTimer{register: 0x3}.to_opcode(), 0xF315);
