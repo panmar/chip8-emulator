@@ -1048,4 +1048,22 @@ mod tests {
             assert_eq!(emulator.cpu.program_counter, pc + 4);
         }
     }
+
+    #[test]
+    fn should_execute_set_reg_to_constant() {
+        use Instruction::*;
+
+        // Given
+        let mut emulator = Emulator::new();
+
+        // When
+        emulator.cpu.registers[0x4] = 0x42;
+        emulator.execute(SetRegToConstant {
+            register: 0x4,
+            constant: 0xD7,
+        });
+
+        // Then
+        assert_eq_hex!(emulator.cpu.registers[0x4], 0xD7);
+    }
 }
