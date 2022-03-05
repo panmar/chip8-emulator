@@ -300,7 +300,7 @@ impl Emulator {
             memory: [0; MEMORY_SIZE],
             active_pixels: HashSet::new(),
             input: [false; 16],
-            cpu_timer: Duration::ZERO,
+            cpu_timer: Duration::MAX,
             sound_timer: Duration::ZERO,
             delay_timer: Duration::ZERO,
         };
@@ -449,9 +449,9 @@ impl Emulator {
     }
 
     pub fn step(&mut self, elapsed_time: Duration) {
-        self.cpu_timer += elapsed_time;
-        self.delay_timer += elapsed_time;
-        self.sound_timer += elapsed_time;
+        self.cpu_timer = self.cpu_timer.saturating_add(elapsed_time);
+        self.delay_timer = self.delay_timer.saturating_add(elapsed_time);
+        self.sound_timer = self.sound_timer.saturating_add(elapsed_time);
 
         if self.delay_timer >= Duration::from_millis(16) {
             self.cpu.delay_timer = self.cpu.delay_timer.saturating_sub(1);
