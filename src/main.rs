@@ -1,7 +1,6 @@
 mod chip8;
 mod sdl_platform;
 
-use crate::{chip8::Emulator, sdl_platform::SDLPlatform};
 use std::{env, process::exit};
 
 pub fn main() {
@@ -15,8 +14,8 @@ pub fn main() {
         exit(1);
     }
 
-    let mut emulator = Emulator::new();
+    let mut emulator = chip8::Emulator::new();
     emulator.load_program_from_file(&args[1]);
-    let mut platform = SDLPlatform::new();
+    let mut platform = sdl_platform::SDLPlatform::new();
     platform.run(&mut emulator);
 }
