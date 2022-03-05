@@ -907,6 +907,147 @@ mod tests {
             // Then
             assert_eq!(emulator.cpu.program_counter, pc + 2);
         }
+    }
 
+    #[test]
+    fn should_execute_skip_if_req_not_eq_constant() {
+        use Instruction::*;
+
+        {
+            // Given
+            let mut emulator = Emulator::new();
+            let pc = emulator.cpu.program_counter;
+
+            // When
+            emulator.cpu.registers[0x3] = 0x7d;
+            emulator.execute(SkipIfRegNotEqConstant {
+                register: 0x3,
+                constant: 0x7d,
+            });
+
+            // Then
+            assert_eq!(emulator.cpu.program_counter, pc + 2);
+        }
+
+        {
+            // Given
+            let mut emulator = Emulator::new();
+            let pc = emulator.cpu.program_counter;
+
+            // When
+            emulator.cpu.registers[0x3] = 0x6c;
+            emulator.execute(SkipIfRegNotEqConstant {
+                register: 0x3,
+                constant: 0x7d,
+            });
+
+            // Then
+            assert_eq!(emulator.cpu.program_counter, pc + 4);
+        }
+    }
+
+    #[test]
+    fn should_execute_skip_if_req_eq_req() {
+        use Instruction::*;
+
+        {
+            // Given
+            let mut emulator = Emulator::new();
+            let pc = emulator.cpu.program_counter;
+
+            // When
+            emulator.cpu.registers[0x3] = 0x42;
+            emulator.cpu.registers[0x5] = 0x42;
+            emulator.execute(SkipIfRegEqReg {
+                register_lhs: 0x3,
+                register_rhs: 0x5,
+            });
+
+            // Then
+            assert_eq!(emulator.cpu.program_counter, pc + 4);
+        }
+
+        {
+            // Given
+            let mut emulator = Emulator::new();
+            let pc = emulator.cpu.program_counter;
+
+            // When
+            emulator.cpu.registers[0x3] = 0x42;
+            emulator.cpu.registers[0x5] = 0x71;
+            emulator.execute(SkipIfRegEqReg {
+                register_lhs: 0x3,
+                register_rhs: 0x5,
+            });
+
+            // Then
+            assert_eq!(emulator.cpu.program_counter, pc + 2);
+        }
+    }
+
+    #[test]
+    fn should_execute_skip_if_key_pressed() {
+        use Instruction::*;
+
+        {
+            // Given
+            let mut emulator = Emulator::new();
+            let pc = emulator.cpu.program_counter;
+
+            // When
+            emulator.input[0xA] = true;
+            emulator.cpu.registers[0x3] = 0xA;
+            emulator.execute(SkipIfKeyPressed { register: 0x3 });
+
+            // Then
+            assert_eq!(emulator.cpu.program_counter, pc + 4);
+        }
+
+        {
+            // Given
+            let mut emulator = Emulator::new();
+            let pc = emulator.cpu.program_counter;
+
+            // When
+            emulator.input[0xA] = false;
+            emulator.cpu.registers[0x3] = 0xA;
+            emulator.execute(SkipIfKeyPressed { register: 0x3 });
+
+            // Then
+            assert_eq!(emulator.cpu.program_counter, pc + 2);
+        }
+    }
+
+    #[test]
+    fn should_execute_skip_if_not_key_pressed() {
+        use Instruction::*;
+
+        {
+            // Given
+            let mut emulator = Emulator::new();
+            let pc = emulator.cpu.program_counter;
+
+            // When
+            emulator.input[0xA] = true;
+            emulator.cpu.registers[0x3] = 0xA;
+            emulator.execute(SkipIfKeyNotPressed { register: 0x3 });
+
+            // Then
+            assert_eq!(emulator.cpu.program_counter, pc + 2);
+        }
+
+        {
+            // Given
+            let mut emulator = Emulator::new();
+            let pc = emulator.cpu.program_counter;
+
+            // When
+            emulator.input[0xA] = false;
+            emulator.cpu.registers[0x3] = 0xA;
+            emulator.execute(SkipIfKeyNotPressed { register: 0x3 });
+
+            // Then
+            assert_eq!(emulator.cpu.program_counter, pc + 4);
+        }
     }
 }
