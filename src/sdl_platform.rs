@@ -3,7 +3,9 @@
 
 extern crate sdl2;
 
-use crate::chip8::{Key, Platform, SCREEN_HEIGHT, SCREEN_WIDTH};
+use std::time::{Duration, Instant};
+
+use crate::chip8::{Emulator, SCREEN_HEIGHT, SCREEN_WIDTH};
 use sdl2::{
     audio::{AudioCallback, AudioDevice, AudioSpecDesired},
     event::Event,
@@ -21,14 +23,30 @@ pub struct SDLPlatform {
     canvas: Canvas<Window>,
     pending_close: bool,
     audio: AudioDevice<SquareWave>,
-    drawn_pixels: HashSet<(u32, u32)>,
-    pressed_keys: HashSet<Keycode>,
 }
 
 struct SquareWave {
     phase_inc: f32,
     phase: f32,
     volume: f32,
+}
+
+struct Timer {
+    timer: Instant,
+}
+
+impl Timer {
+    fn new() -> Timer {
+        Timer {
+            timer: Instant::now(),
+        }
+    }
+
+    fn tick(&mut self) -> Duration {
+        let elapsed_time = self.timer.elapsed();
+        self.timer = Instant::now();
+        elapsed_time
+    }
 }
 
 impl AudioCallback for SquareWave {
@@ -78,96 +96,34 @@ impl SDLPlatform {
             canvas,
             pending_close: false,
             audio: audio_device,
-            drawn_pixels: HashSet::new(),
-            pressed_keys: HashSet::new(),
         }
     }
 
-    fn draw_pixel_no_present(&mut self, x: u32, y: u32) -> bool {
-        let mut xored = false;
-        if self.drawn_pixels.contains(&(x, y)) {
-            self.drawn_pixels.remove(&(x, y));
-            xored = true;
+    pub fn run(&mut self, emulator: &mut Emulator) {
+        let mut update_timer = Timer::new();
+        while !self.pending_close {
+            self.update(emulator, update_timer.tick());
+            self.draw(emulator);
+        }
+    }
+
+    fn update(&mut self, emulator: &mut Emulator, elapsed_time: Duration) {
+        self.handle_input(emulator);
+        emulator.step(elapsed_time);
+
+        if emulator.cpu.sound_timer > 0 {
+            self.audio.resume();
         } else {
-            self.drawn_pixels.insert((x, y));
+            self.audio.pause();
         }
-
-        return xored;
-    }
-}
-
-impl Platform for SDLPlatform {
-    fn clear_display(&mut self) {
-        self.drawn_pixels.clear();
     }
 
-    fn draw_pixels(&mut self, pixels: &[(u32, u32)]) -> bool {
-        let mut xored = false;
-        for pixel in pixels {
-            xored |= self.draw_pixel_no_present(pixel.0, pixel.1);
-        }
-        return xored;
-    }
-
-    fn is_key_pressed(&self, key: Key) -> bool {
-        // NOTE(panmar): Use more convenient QWERTY keyboard mapping
-        // 1 2 3 C                 1 2 3 4
-        // 4 5 6 D      ====>      Q W E R
-        // 7 8 9 E      ====>      A S D F
-        // A 0 B F                 Z X C V
-        for code in self.pressed_keys.iter() {
-            let code_as_i32 = match code {
-                Keycode::Num1 => 1,
-                Keycode::Num2 => 2,
-                Keycode::Num3 => 3,
-                Keycode::Q => 4,
-                Keycode::W => 5,
-                Keycode::E => 6,
-                Keycode::A => 7,
-                Keycode::S => 8,
-                Keycode::D => 9,
-                Keycode::Z => 0xA,
-                Keycode::X => 0,
-                Keycode::C => 0xB,
-                Keycode::Num4 => 0xC,
-                Keycode::R => 0xD,
-                Keycode::F => 0xE,
-                Keycode::V => 0xF,
-                _ => 42,
-            };
-            if code_as_i32 == key.value() {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    fn get_key_pressed(&self) -> Option<Key> {
-        for code in self.pressed_keys.iter() {
-            match code {
-                Keycode::Num0 => return Some(Key::Num0),
-                Keycode::Num1 => return Some(Key::Num1),
-                Keycode::Num2 => return Some(Key::Num2),
-                Keycode::Num3 => return Some(Key::Num3),
-                Keycode::Num4 => return Some(Key::Num4),
-                Keycode::Num5 => return Some(Key::Num5),
-                Keycode::Num6 => return Some(Key::Num6),
-                Keycode::Num7 => return Some(Key::Num7),
-                Keycode::Num8 => return Some(Key::Num8),
-                Keycode::Num9 => return Some(Key::Num9),
-                Keycode::A => return Some(Key::A),
-                Keycode::B => return Some(Key::B),
-                Keycode::C => return Some(Key::C),
-                Keycode::D => return Some(Key::D),
-                Keycode::E => return Some(Key::E),
-                Keycode::F => return Some(Key::F),
-                _ => return Option::None,
-            };
-        }
-        return Option::None;
-    }
-
-    fn update(&mut self) {
+    // NOTE(panmar): Use more convenient QWERTY keyboard mapping
+    // 1 2 3 C                 1 2 3 4
+    // 4 5 6 D      ====>      Q W E R
+    // 7 8 9 E      ====>      A S D F
+    // A 0 B F                 Z X C V
+    fn handle_input(&mut self, emulator: &mut Emulator) {
         let mut event_pump = self.context.event_pump().unwrap();
         for event in event_pump.poll_iter() {
             match event {
@@ -179,24 +135,43 @@ impl Platform for SDLPlatform {
                 _ => {}
             }
         }
-
-        self.pressed_keys = event_pump
+        let pressed_keys: HashSet<Keycode> = event_pump
             .keyboard_state()
             .pressed_scancodes()
             .filter_map(Keycode::from_scancode)
             .collect();
-
-        // println!("{:?}", self.pressed_keys);
+        emulator.input.fill(false);
+        for keycode in pressed_keys {
+            match keycode {
+                Keycode::Num1 => emulator.input[1] = true,
+                Keycode::Num2 => emulator.input[2] = true,
+                Keycode::Num3 => emulator.input[3] = true,
+                Keycode::Q => emulator.input[4] = true,
+                Keycode::W => emulator.input[5] = true,
+                Keycode::E => emulator.input[6] = true,
+                Keycode::A => emulator.input[7] = true,
+                Keycode::S => emulator.input[8] = true,
+                Keycode::D => emulator.input[9] = true,
+                Keycode::Z => emulator.input[0xA] = true,
+                Keycode::X => emulator.input[0] = true,
+                Keycode::C => emulator.input[0xB] = true,
+                Keycode::Num4 => emulator.input[0xC] = true,
+                Keycode::R => emulator.input[0xD] = true,
+                Keycode::F => emulator.input[0xE] = true,
+                Keycode::V => emulator.input[0xF] = true,
+                _ => {}
+            };
+        }
     }
 
-    fn draw(&mut self) {
+    fn draw(&mut self, emulator: &Emulator) {
         self.canvas.set_draw_color(Color::RGB(0, 0, 0));
         self.canvas.clear();
 
         self.canvas.set_draw_color(Color::RGB(255, 255, 255));
         let pixel_size = 20u32;
 
-        for pixel in self.drawn_pixels.iter() {
+        for pixel in emulator.active_pixels.iter() {
             self.canvas
                 .fill_rect(Rect::new(
                     pixel_size as i32 * pixel.0 as i32,
@@ -208,17 +183,5 @@ impl Platform for SDLPlatform {
         }
 
         self.canvas.present();
-    }
-
-    fn pending_close(&self) -> bool {
-        self.pending_close
-    }
-
-    fn play_sound(&mut self) {
-        self.audio.resume();
-    }
-
-    fn stop_sound(&mut self) {
-        self.audio.pause();
     }
 }
