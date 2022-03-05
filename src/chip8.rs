@@ -871,4 +871,42 @@ mod tests {
         assert_eq_hex!(emulator.cpu.program_counter, 0x123);
         assert_eq!(emulator.cpu.stack_index, -1);
     }
+
+    #[test]
+    fn should_execute_skip_if_req_eq_constant() {
+        use Instruction::*;
+
+        {
+            // Given
+            let mut emulator = Emulator::new();
+            let pc = emulator.cpu.program_counter;
+
+            // When
+            emulator.cpu.registers[0x3] = 0x7d;
+            emulator.execute(SkipIfRegEqConstant {
+                register: 0x3,
+                constant: 0x7d,
+            });
+
+            // Then
+            assert_eq!(emulator.cpu.program_counter, pc + 4);
+        }
+
+        {
+            // Given
+            let mut emulator = Emulator::new();
+            let pc = emulator.cpu.program_counter;
+
+            // When
+            emulator.cpu.registers[0x3] = 0x6c;
+            emulator.execute(SkipIfRegEqConstant {
+                register: 0x3,
+                constant: 0x7d,
+            });
+
+            // Then
+            assert_eq!(emulator.cpu.program_counter, pc + 2);
+        }
+
+    }
 }
