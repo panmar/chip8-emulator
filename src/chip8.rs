@@ -815,8 +815,7 @@ mod tests {
         emulator.active_pixels.extend([(1, 1), (10, 15), (21, 30)]);
 
         // When
-        emulator.load_instructions(vec![ClearDisplay]);
-        emulator.step(Duration::from_nanos(1));
+        emulator.execute(ClearDisplay);
 
         // Then
         assert_eq!(emulator.active_pixels.len(), 0);
@@ -830,8 +829,7 @@ mod tests {
         let mut emulator = Emulator::new();
 
         // When
-        emulator.load_instructions(vec![Jump { address: 0x123 }]);
-        emulator.step(Duration::from_nanos(1));
+        emulator.execute(Jump { address: 0x123 });
 
         // Then
         assert_eq_hex!(emulator.cpu.program_counter, 0x123);
@@ -843,17 +841,17 @@ mod tests {
 
         // Given
         let mut emulator = Emulator::new();
+        let pc = emulator.cpu.program_counter;
 
         // When
-        emulator.load_instructions(vec![Call { address: 0x123 }]);
-        emulator.step(Duration::from_nanos(1));
+        emulator.execute(Call { address: 0x123 });
 
         // Then
         assert_eq_hex!(emulator.cpu.program_counter, 0x123);
         assert_eq!(emulator.cpu.stack_index, 0);
         assert_eq!(
             emulator.cpu.stack[emulator.cpu.stack_index as usize],
-            512 + 2
+            pc + 2
         );
     }
 
@@ -867,8 +865,7 @@ mod tests {
         emulator.cpu.stack_index = 0;
 
         // When
-        emulator.load_instructions(vec![Return]);
-        emulator.step(Duration::from_nanos(1));
+        emulator.execute(Return);
 
         // Then
         assert_eq_hex!(emulator.cpu.program_counter, 0x123);
