@@ -479,11 +479,12 @@ impl Emulator {
             self.memory[(self.cpu.program_counter + 1) as usize],
         ]);
 
-        self.cpu.program_counter += 2;
         return Some(opcode);
     }
 
     fn execute(&mut self, instruction: Instruction) {
+        self.cpu.program_counter += 2;
+
         use Instruction::*;
         match instruction {
             ClearDisplay => {
