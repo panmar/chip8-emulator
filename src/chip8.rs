@@ -806,12 +806,71 @@ mod tests {
     }
 
     #[test]
-    #[rustfmt::skip]
     fn should_execute_clear_display() {
+        use Instruction::*;
+
+        // Given
         let mut emulator = Emulator::new();
-        // TODO(panmar): How to test it?
-        // We must draw sth first, to check if it was cleared...
-        emulator.load_instructions(vec![Instruction::ClearDisplay]);
-        emulator.step(Duration::from_micros(100));
+        emulator.active_pixels.extend([(1, 1), (10, 15), (21, 30)]);
+
+        // When
+        emulator.load_instructions(vec![ClearDisplay]);
+        emulator.step(Duration::from_nanos(1));
+
+        // Then
+        assert_eq!(emulator.active_pixels.len(), 0);
+    }
+
+    #[test]
+    fn should_execute_jump() {
+        use Instruction::*;
+
+        // Given
+        let mut emulator = Emulator::new();
+
+        // When
+        emulator.load_instructions(vec![Jump { address: 0x123 }]);
+        emulator.step(Duration::from_nanos(1));
+
+        // Then
+        assert_eq_hex!(emulator.cpu.program_counter, 0x123);
+    }
+
+    #[test]
+    fn should_execute_call() {
+        use Instruction::*;
+
+        // Given
+        let mut emulator = Emulator::new();
+
+        // When
+        emulator.load_instructions(vec![Call { address: 0x123 }]);
+        emulator.step(Duration::from_nanos(1));
+
+        // Then
+        assert_eq_hex!(emulator.cpu.program_counter, 0x123);
+        assert_eq!(emulator.cpu.stack_index, 0);
+        assert_eq!(
+            emulator.cpu.stack[emulator.cpu.stack_index as usize],
+            512 + 2
+        );
+    }
+
+    #[test]
+    fn should_execute_return() {
+        use Instruction::*;
+
+        // Given
+        let mut emulator = Emulator::new();
+        emulator.cpu.stack[0] = 0x123;
+        emulator.cpu.stack_index = 0;
+
+        // When
+        emulator.load_instructions(vec![Return]);
+        emulator.step(Duration::from_nanos(1));
+
+        // Then
+        assert_eq_hex!(emulator.cpu.program_counter, 0x123);
+        assert_eq!(emulator.cpu.stack_index, -1);
     }
 }
