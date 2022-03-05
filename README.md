@@ -6,12 +6,10 @@ A [CHIP-8](https://en.wikipedia.org/wiki/CHIP-8) emulator written in Rust.
 mod chip8;
 mod sdl_platform;
 
-use crate::sdl_platform::SDLPlatform;
-
-pub fn main() {
-    let platform = SDLPlatform::new();
-    let mut emulator = chip8::Emulator::new(Box::new(platform));
-    emulator.load_program_from_file("example.rom");
-    emulator.run();
+pub fn main() {   
+    let mut emulator = chip8::Emulator::new();
+    emulator.load_program_from_file(&args[1]);
+    let mut platform = sdl_platform::SDLPlatform::new();
+    platform.run(&mut emulator);
 }
 ```
