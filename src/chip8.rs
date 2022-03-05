@@ -1061,4 +1061,41 @@ mod tests {
         // Then
         assert_eq_hex!(emulator.cpu.registers[0x4], 0xD7);
     }
+
+    #[test]
+    fn should_execute_add_const_to_reg() {
+        use Instruction::*;
+
+        {
+            // Given
+            let mut emulator = Emulator::new();
+
+            // When
+            emulator.cpu.registers[0x4] = 0x27;
+            emulator.execute(AddConstToReg {
+                register: 0x4,
+                constant: 0xD7,
+            });
+
+            // Then
+            assert_eq_hex!(emulator.cpu.registers[0x4], 0x27 + 0xD7);
+            assert_eq_hex!(emulator.cpu.registers[0xF], 0);
+        }
+
+        {
+            // Given
+            let mut emulator = Emulator::new();
+
+            // When
+            emulator.cpu.registers[0x4] = 0xff;
+            emulator.execute(AddConstToReg {
+                register: 0x4,
+                constant: 0x01,
+            });
+
+            // Then
+            assert_eq_hex!(emulator.cpu.registers[0x4], 0x0);
+            assert_eq_hex!(emulator.cpu.registers[0xF], 0);
+        }
+    }
 }
