@@ -298,7 +298,6 @@ impl Emulator {
                 sound_timer: 0,
             },
             memory: [0; MEMORY_SIZE],
-            // screen: [[0; SCREEN_WIDTH as usize]; SCREEN_HEIGHT as usize],
             active_pixels: HashSet::new(),
             input: [false; 16],
             cpu_timer: Duration::ZERO,
