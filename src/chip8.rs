@@ -520,12 +520,7 @@ impl Emulator {
             }
             SetRegToConstant { register, constant } => self.cpu.registers[register] = constant,
             AddConstToReg { register, constant } => {
-                let result = self.cpu.registers[register].overflowing_add(constant);
-                match result {
-                    (number, _) => {
-                        self.cpu.registers[register] = number;
-                    }
-                }
+                self.cpu.registers[register] = self.cpu.registers[register].wrapping_add(constant);
             }
             SetRegToReg {
                 register_lhs,
