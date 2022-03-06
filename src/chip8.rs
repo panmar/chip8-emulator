@@ -1529,4 +1529,151 @@ mod tests {
         // Then
         assert_eq_hex!(emulator.cpu.registers[0x3], 0xC);
     }
+
+    #[test]
+    fn should_execute_await_and_set_key_press_with_no_delay() {
+        use Instruction::*;
+
+        // Given
+        let mut emulator = Emulator::new();
+
+        // When
+        emulator.input[0xC] = false;
+        emulator.load_instructions(vec![AwaitAndSetKeyPress { register: 0x3 }]);
+        emulator.step(Duration::from_nanos(1));
+        emulator.input[0xC] = true;
+        emulator.step(Duration::from_nanos(1));
+
+        // Then
+        assert_eq_hex!(emulator.cpu.registers[0x3], 0xC);
+    }
+
+    #[test]
+    fn should_execute_await_and_set_delay_timer() {
+        use Instruction::*;
+
+        // Given
+        let mut emulator = Emulator::new();
+        emulator.cpu.registers[0x3] = 0x7d;
+
+        // When
+        emulator.execute(SetDelayTimer { register: 0x3 });
+
+        // Then
+        assert_eq!(emulator.cpu.delay_timer, 0x7d);
+    }
+
+    #[test]
+    fn should_execute_await_and_set_sound_timer() {
+        use Instruction::*;
+
+        // Given
+        let mut emulator = Emulator::new();
+        emulator.cpu.registers[0x3] = 0x7d;
+
+        // When
+        emulator.execute(SetSoundTimer { register: 0x3 });
+
+        // Then
+        assert_eq!(emulator.cpu.sound_timer, 0x7d);
+    }
+
+    #[test]
+    fn should_execute_add_reg_to_address_without_carry() {
+        use Instruction::*;
+
+        {
+            // Given
+            let mut emulator = Emulator::new();
+            emulator.cpu.register_i = 0xd79;
+            emulator.cpu.registers[0x3] = 0x7d;
+
+            // When
+            emulator.execute(AddRegToAddressWithoutCarry { register: 0x3 });
+
+            // Then
+            assert_eq_hex!(emulator.cpu.register_i, 0xd79 + 0x7d);
+            assert_eq!(emulator.cpu.registers[0xF], 0);
+        }
+
+        {
+            // Given
+            let mut emulator = Emulator::new();
+            emulator.cpu.register_i = 0xf79;
+            emulator.cpu.registers[0x3] = 0x7d;
+
+            // When
+            emulator.execute(AddRegToAddressWithoutCarry { register: 0x3 });
+
+            // Then
+            assert_eq_hex!(emulator.cpu.register_i, 0xf79 + 0x7d);
+            assert_eq!(emulator.cpu.registers[0xF], 0);
+        }
+    }
+
+    #[test]
+    fn should_execute_store_reg_bcd() {
+        use Instruction::*;
+
+        // Given
+        let mut emulator = Emulator::new();
+        emulator.cpu.registers[0x3] = 196;
+        emulator.cpu.register_i = 0x765;
+
+        // When
+        emulator.execute(StoreRegBcd { register: 0x3 });
+
+        // Then
+        assert_eq!(emulator.memory[emulator.cpu.register_i as usize + 0], 1);
+        assert_eq!(emulator.memory[emulator.cpu.register_i as usize + 1], 9);
+        assert_eq!(emulator.memory[emulator.cpu.register_i as usize + 2], 6);
+    }
+
+    #[test]
+    fn should_execute_store_registers() {
+        use Instruction::*;
+
+        // Given
+        let mut emulator = Emulator::new();
+        emulator.cpu.registers[0x0] = 0x41;
+        emulator.cpu.registers[0x1] = 0xb7;
+        emulator.cpu.registers[0x2] = 0x09;
+        emulator.cpu.registers[0x3] = 0xff;
+        emulator.cpu.register_i = 0x765;
+
+        // When
+        emulator.execute(StoreRegisters { last_register: 0x2 });
+
+        // Then
+        assert_eq_hex!(emulator.memory[emulator.cpu.register_i as usize + 0], 0x41);
+        assert_eq_hex!(emulator.memory[emulator.cpu.register_i as usize + 1], 0xb7);
+        assert_eq_hex!(emulator.memory[emulator.cpu.register_i as usize + 2], 0x09);
+        assert_eq_hex!(emulator.memory[emulator.cpu.register_i as usize + 3], 0);
+    }
+
+    #[test]
+    fn should_execute_load_registers() {
+        use Instruction::*;
+
+        // Given
+        let mut emulator = Emulator::new();
+        emulator.cpu.registers[0x0] = 0xff;
+        emulator.cpu.registers[0x1] = 0xff;
+        emulator.cpu.registers[0x2] = 0xff;
+        emulator.cpu.registers[0x3] = 0xff;
+        emulator.cpu.register_i = 0x765;
+        emulator.memory[emulator.cpu.register_i as usize + 0] = 0x71;
+        emulator.memory[emulator.cpu.register_i as usize + 1] = 0xa5;
+        emulator.memory[emulator.cpu.register_i as usize + 2] = 0x06;
+        emulator.memory[emulator.cpu.register_i as usize + 3] = 0x51;
+
+        // When
+        emulator.execute(LoadRegisters { last_register: 0x2 });
+
+        // Then
+        assert_eq_hex!(emulator.cpu.registers[0x0], 0x71);
+        assert_eq_hex!(emulator.cpu.registers[0x1], 0xa5);
+        assert_eq_hex!(emulator.cpu.registers[0x2], 0x06);
+        assert_eq_hex!(emulator.cpu.registers[0x3], 0xff);
+    }
 }
