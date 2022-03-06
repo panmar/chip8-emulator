@@ -1373,4 +1373,122 @@ mod tests {
             0x456 + emulator.cpu.registers[0] as u16
         );
     }
+
+    #[test]
+    fn should_execute_display_sprite_no_xor() {
+        use Instruction::*;
+
+        // Given
+        let mut emulator = Emulator::new();
+        emulator.cpu.registers[2] = 20;
+        emulator.cpu.registers[3] = 10;
+        emulator.cpu.register_i = 0x600;
+        emulator.memory[0x600] = 0b10101010;
+        emulator.memory[0x601] = 0b00111010;
+
+        // When
+        emulator.execute(DisplaySprite {
+            register_x: 2,
+            register_y: 3,
+            n_bytes: 2,
+        });
+
+        // Then
+        assert_eq!(emulator.active_pixels.len(), 8);
+        assert!(emulator.active_pixels.contains(&(20, 10)));
+        assert!(emulator.active_pixels.contains(&(22, 10)));
+        assert!(emulator.active_pixels.contains(&(24, 10)));
+        assert!(emulator.active_pixels.contains(&(26, 10)));
+        assert!(emulator.active_pixels.contains(&(22, 11)));
+        assert!(emulator.active_pixels.contains(&(23, 11)));
+        assert!(emulator.active_pixels.contains(&(24, 11)));
+        assert!(emulator.active_pixels.contains(&(26, 11)));
+        assert_eq!(emulator.cpu.registers[0xF], 0);
+    }
+
+    #[test]
+    fn should_execute_display_sprite_xor() {
+        use Instruction::*;
+
+        // Given
+        let mut emulator = Emulator::new();
+        emulator.cpu.registers[2] = 20;
+        emulator.cpu.registers[3] = 10;
+        emulator.cpu.register_i = 0x600;
+        emulator.memory[0x600] = 0b10101010;
+        emulator.active_pixels.insert((22, 10));
+        emulator.active_pixels.insert((26, 10));
+
+        // When
+        emulator.execute(DisplaySprite {
+            register_x: 2,
+            register_y: 3,
+            n_bytes: 1,
+        });
+
+        // Then
+        assert_eq!(emulator.active_pixels.len(), 2);
+        assert!(emulator.active_pixels.contains(&(20, 10)));
+        assert!(emulator.active_pixels.contains(&(24, 10)));
+        assert_eq!(emulator.cpu.registers[0xF], 1);
+    }
+
+    #[test]
+    fn should_execute_display_sprite_near_edge() {
+        use Instruction::*;
+
+        // Given
+        let mut emulator = Emulator::new();
+        emulator.cpu.registers[2] = (SCREEN_WIDTH - 3) as u8;
+        emulator.cpu.registers[3] = (SCREEN_HEIGHT - 1) as u8;
+        emulator.cpu.register_i = 0x600;
+        emulator.memory[0x600] = 0b10101010;
+        emulator.memory[0x601] = 0b01101011;
+
+        // When
+        emulator.execute(DisplaySprite {
+            register_x: 2,
+            register_y: 3,
+            n_bytes: 2,
+        });
+
+        // Then
+        assert_eq!(emulator.active_pixels.len(), 2);
+        assert!(emulator
+            .active_pixels
+            .contains(&(SCREEN_WIDTH - 3, SCREEN_HEIGHT - 1)));
+        assert!(emulator
+            .active_pixels
+            .contains(&(SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1)));
+        assert_eq!(emulator.cpu.registers[0xF], 0);
+    }
+
+    #[test]
+    fn should_execute_display_sprite_wrap() {
+        use Instruction::*;
+
+        // Given
+        let mut emulator = Emulator::new();
+        emulator.cpu.registers[2] = (7 * SCREEN_WIDTH + 5) as u8;
+        emulator.cpu.registers[3] = (2 * SCREEN_HEIGHT + 10) as u8;
+        emulator.cpu.register_i = 0x600;
+        emulator.memory[0x600] = 0b10000010;
+        emulator.memory[0x601] = 0b01001001;
+
+        // When
+        emulator.execute(DisplaySprite {
+            register_x: 2,
+            register_y: 3,
+            n_bytes: 2,
+        });
+
+        // Then
+        assert_eq!(emulator.active_pixels.len(), 5);
+        assert!(emulator.active_pixels.contains(&(5, 10)));
+        assert!(emulator.active_pixels.contains(&(11, 10)));
+        assert!(emulator.active_pixels.contains(&(6, 11)));
+        assert!(emulator.active_pixels.contains(&(9, 11)));
+        assert!(emulator.active_pixels.contains(&(12, 11)));
+        assert_eq!(emulator.cpu.registers[0xF], 0);
+    }
 }
