@@ -8,7 +8,7 @@ mod sdl_platform;
 
 pub fn main() {   
     let mut emulator = chip8::Emulator::new();
-    emulator.load_program_from_file(&args[1]);
+    emulator.load_program_from_file("example.ch8");
     let mut platform = sdl_platform::SDLPlatform::new();
     platform.run(&mut emulator);
 }
