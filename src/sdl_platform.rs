@@ -102,19 +102,26 @@ impl SDLPlatform {
     pub fn run(&mut self, emulator: &mut Emulator) {
         let mut update_timer = Timer::new();
         while !self.pending_close {
-            self.update(emulator, update_timer.tick());
+            self.update(emulator, &mut update_timer);
             self.draw(emulator);
         }
     }
 
-    fn update(&mut self, emulator: &mut Emulator, elapsed_time: Duration) {
-        self.handle_input(emulator);
-        emulator.step(elapsed_time);
+    fn update(&mut self, emulator: &mut Emulator, timer: &mut Timer) {
+        self.update_input(emulator);
 
-        if emulator.cpu.sound_timer > 0 {
-            self.audio.resume();
-        } else {
-            self.audio.pause();
+        let mut total_update_time = Duration::ZERO;
+        while total_update_time < Duration::from_millis(16) {
+            let elapsed_time = timer.tick();
+            emulator.step(elapsed_time);
+
+            if emulator.cpu.sound_timer > 0 {
+                self.audio.resume();
+            } else {
+                self.audio.pause();
+            }
+
+            total_update_time += elapsed_time;
         }
     }
 
@@ -123,7 +130,7 @@ impl SDLPlatform {
     // 4 5 6 D      ====>      Q W E R
     // 7 8 9 E      ====>      A S D F
     // A 0 B F                 Z X C V
-    fn handle_input(&mut self, emulator: &mut Emulator) {
+    fn update_input(&mut self, emulator: &mut Emulator) {
         let mut event_pump = self.context.event_pump().unwrap();
         for event in event_pump.poll_iter() {
             match event {
@@ -140,6 +147,7 @@ impl SDLPlatform {
             .pressed_scancodes()
             .filter_map(Keycode::from_scancode)
             .collect();
+
         emulator.input.fill(false);
         for keycode in pressed_keys {
             match keycode {
