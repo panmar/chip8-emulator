@@ -1098,4 +1098,292 @@ mod tests {
             assert_eq_hex!(emulator.cpu.registers[0xF], 0);
         }
     }
+
+    #[test]
+    fn should_execute_set_reg_to_reg() {
+        use Instruction::*;
+
+        // Given
+        let mut emulator = Emulator::new();
+
+        // When
+        emulator.cpu.registers[0x3] = 0x42;
+        emulator.cpu.registers[0xa] = 0xd5;
+        emulator.execute(SetRegToReg {
+            register_lhs: 0x3,
+            register_rhs: 0xa,
+        });
+
+        // Then
+        assert_eq_hex!(emulator.cpu.registers[0x3], 0xd5);
+    }
+
+    #[test]
+    fn should_execute_bitwise_or() {
+        use Instruction::*;
+
+        // Given
+        let mut emulator = Emulator::new();
+
+        // When
+        emulator.cpu.registers[0x3] = 0x42;
+        emulator.cpu.registers[0xa] = 0xd5;
+        emulator.execute(BitwiseOr {
+            register_lhs: 0x3,
+            register_rhs: 0xa,
+        });
+
+        // Then
+        assert_eq_hex!(emulator.cpu.registers[0x3], 0x42 | 0xd5);
+    }
+
+    #[test]
+    fn should_execute_bitwise_and() {
+        use Instruction::*;
+
+        // Given
+        let mut emulator = Emulator::new();
+
+        // When
+        emulator.cpu.registers[0x3] = 0x42;
+        emulator.cpu.registers[0xa] = 0xd5;
+        emulator.execute(BitwiseAnd {
+            register_lhs: 0x3,
+            register_rhs: 0xa,
+        });
+
+        // Then
+        assert_eq_hex!(emulator.cpu.registers[0x3], 0x42 & 0xd5);
+    }
+
+    #[test]
+    fn should_execute_bitwise_xor() {
+        use Instruction::*;
+
+        // Given
+        let mut emulator = Emulator::new();
+
+        // When
+        emulator.cpu.registers[0x3] = 0x42;
+        emulator.cpu.registers[0xa] = 0xd5;
+        emulator.execute(BitwiseXor {
+            register_lhs: 0x3,
+            register_rhs: 0xa,
+        });
+
+        // Then
+        assert_eq_hex!(emulator.cpu.registers[0x3], 0x42 ^ 0xd5);
+    }
+
+    #[test]
+    fn should_execute_add_reg_to_reg() {
+        use Instruction::*;
+
+        {
+            // Given
+            let mut emulator = Emulator::new();
+
+            // When
+            emulator.cpu.registers[0x3] = 0x42;
+            emulator.cpu.registers[0xa] = 0x65;
+            emulator.execute(AddRegToReg {
+                register_lhs: 0x3,
+                register_rhs: 0xa,
+            });
+
+            // Then
+            assert_eq_hex!(emulator.cpu.registers[0x3], 0x42 + 0x65);
+            assert_eq!(emulator.cpu.registers[0xF], 0);
+        }
+
+        {
+            // Given
+            let mut emulator = Emulator::new();
+
+            // When
+            emulator.cpu.registers[0x3] = 0xff;
+            emulator.cpu.registers[0xa] = 0x1;
+            emulator.execute(AddRegToReg {
+                register_lhs: 0x3,
+                register_rhs: 0xa,
+            });
+
+            // Then
+            assert_eq_hex!(emulator.cpu.registers[0x3], 0x0);
+            assert_eq!(emulator.cpu.registers[0xF], 1);
+        }
+    }
+
+    #[test]
+    fn should_execute_sub_reg2_from_reg1() {
+        use Instruction::*;
+
+        {
+            // Given
+            let mut emulator = Emulator::new();
+
+            // When
+            emulator.cpu.registers[0x3] = 0x65;
+            emulator.cpu.registers[0x4] = 0x42;
+            emulator.execute(SubReg2FromReg1 {
+                register_lhs: 0x3,
+                register_rhs: 0x4,
+            });
+
+            // Then
+            assert_eq_hex!(emulator.cpu.registers[0x3], 0x65 - 0x42);
+            assert_eq!(emulator.cpu.registers[0xF], 1);
+        }
+
+        {
+            // Given
+            let mut emulator = Emulator::new();
+
+            // When
+            emulator.cpu.registers[0x3] = 0x0;
+            emulator.cpu.registers[0x4] = 0x4;
+            emulator.execute(SubReg2FromReg1 {
+                register_lhs: 0x3,
+                register_rhs: 0x4,
+            });
+
+            // Then
+            assert_eq_hex!(emulator.cpu.registers[0x3], 0xfc);
+            assert_eq!(emulator.cpu.registers[0xF], 0);
+        }
+    }
+
+    #[test]
+    fn should_execute_sub_reg1_from_reg2() {
+        use Instruction::*;
+
+        {
+            // Given
+            let mut emulator = Emulator::new();
+
+            // When
+            emulator.cpu.registers[0x3] = 0x42;
+            emulator.cpu.registers[0x4] = 0x65;
+            emulator.execute(SubReg1FromReg2 {
+                register_lhs: 0x3,
+                register_rhs: 0x4,
+            });
+
+            // Then
+            assert_eq_hex!(emulator.cpu.registers[0x3], 0x65 - 0x42);
+            assert_eq!(emulator.cpu.registers[0xF], 1);
+        }
+
+        {
+            // Given
+            let mut emulator = Emulator::new();
+
+            // When
+            emulator.cpu.registers[0x3] = 0x7;
+            emulator.cpu.registers[0x4] = 0x0;
+            emulator.execute(SubReg1FromReg2 {
+                register_lhs: 0x3,
+                register_rhs: 0x4,
+            });
+
+            // Then
+            assert_eq_hex!(emulator.cpu.registers[0x3], 0xf9);
+            assert_eq!(emulator.cpu.registers[0xF], 0);
+        }
+    }
+
+    #[test]
+    fn should_execute_bitwise_shr_by_1() {
+        use Instruction::*;
+
+        {
+            // Given
+            let mut emulator = Emulator::new();
+
+            // When
+            emulator.cpu.registers[0x3] = 0b11001101;
+            emulator.execute(BitwiseShrBy1 { register: 0x3 });
+
+            // Then
+            assert_eq_hex!(emulator.cpu.registers[0x3], 0b1100110);
+            assert_eq!(emulator.cpu.registers[0xF], 1);
+        }
+
+        {
+            // Given
+            let mut emulator = Emulator::new();
+
+            // When
+            emulator.cpu.registers[0x3] = 0b10001110;
+            emulator.execute(BitwiseShrBy1 { register: 0x3 });
+
+            // Then
+            assert_eq_hex!(emulator.cpu.registers[0x3], 0b1000111);
+            assert_eq!(emulator.cpu.registers[0xF], 0);
+        }
+    }
+
+    #[test]
+    fn should_execute_bitwise_shl_by_1() {
+        use Instruction::*;
+
+        {
+            // Given
+            let mut emulator = Emulator::new();
+
+            // When
+            emulator.cpu.registers[0x3] = 0b1101;
+            emulator.execute(BitwiseShlBy1 { register: 0x3 });
+
+            // Then
+            assert_eq_hex!(emulator.cpu.registers[0x3], 0b11010);
+            assert_eq!(emulator.cpu.registers[0xF], 0);
+        }
+
+        {
+            // Given
+            let mut emulator = Emulator::new();
+
+            // When
+            emulator.cpu.registers[0x3] = 0b11001110;
+            emulator.execute(BitwiseShlBy1 { register: 0x3 });
+
+            // Then
+            assert_eq_hex!(emulator.cpu.registers[0x3], 0b10011100);
+            assert_eq!(emulator.cpu.registers[0xF], 1);
+        }
+    }
+
+    #[test]
+    fn should_execute_set_address() {
+        use Instruction::*;
+
+        // Given
+        let mut emulator = Emulator::new();
+
+        // When
+        emulator.cpu.register_i = 0x0;
+        emulator.execute(SetAddress { address: 0x456 });
+
+        // Then
+        assert_eq_hex!(emulator.cpu.register_i, 0x456);
+    }
+
+    #[test]
+    fn should_execute_jump_with_v9_offset() {
+        use Instruction::*;
+
+        // Given
+        let mut emulator = Emulator::new();
+
+        // When
+        emulator.cpu.registers[0] = 0xff;
+        emulator.execute(JumpWithV0Offset { address: 0x456 });
+
+        // Then
+        assert_eq_hex!(
+            emulator.cpu.program_counter,
+            0x456 + emulator.cpu.registers[0] as u16
+        );
+    }
 }
