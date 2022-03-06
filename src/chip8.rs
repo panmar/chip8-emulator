@@ -872,10 +872,10 @@ mod tests {
         {
             // Given
             let mut emulator = Emulator::new();
+            emulator.cpu.registers[0x3] = 0x7d;
             let pc = emulator.cpu.program_counter;
 
             // When
-            emulator.cpu.registers[0x3] = 0x7d;
             emulator.execute(SkipIfRegEqConstant {
                 register: 0x3,
                 constant: 0x7d,
@@ -888,10 +888,10 @@ mod tests {
         {
             // Given
             let mut emulator = Emulator::new();
+            emulator.cpu.registers[0x3] = 0x6c;
             let pc = emulator.cpu.program_counter;
 
             // When
-            emulator.cpu.registers[0x3] = 0x6c;
             emulator.execute(SkipIfRegEqConstant {
                 register: 0x3,
                 constant: 0x7d,
@@ -909,10 +909,10 @@ mod tests {
         {
             // Given
             let mut emulator = Emulator::new();
+            emulator.cpu.registers[0x3] = 0x7d;
             let pc = emulator.cpu.program_counter;
 
             // When
-            emulator.cpu.registers[0x3] = 0x7d;
             emulator.execute(SkipIfRegNotEqConstant {
                 register: 0x3,
                 constant: 0x7d,
@@ -925,10 +925,10 @@ mod tests {
         {
             // Given
             let mut emulator = Emulator::new();
+            emulator.cpu.registers[0x3] = 0x6c;
             let pc = emulator.cpu.program_counter;
 
             // When
-            emulator.cpu.registers[0x3] = 0x6c;
             emulator.execute(SkipIfRegNotEqConstant {
                 register: 0x3,
                 constant: 0x7d,
@@ -946,11 +946,11 @@ mod tests {
         {
             // Given
             let mut emulator = Emulator::new();
+            emulator.cpu.registers[0x3] = 0x42;
+            emulator.cpu.registers[0x5] = 0x42;
             let pc = emulator.cpu.program_counter;
 
             // When
-            emulator.cpu.registers[0x3] = 0x42;
-            emulator.cpu.registers[0x5] = 0x42;
             emulator.execute(SkipIfRegEqReg {
                 register_lhs: 0x3,
                 register_rhs: 0x5,
@@ -963,11 +963,11 @@ mod tests {
         {
             // Given
             let mut emulator = Emulator::new();
+            emulator.cpu.registers[0x3] = 0x42;
+            emulator.cpu.registers[0x5] = 0x71;
             let pc = emulator.cpu.program_counter;
 
             // When
-            emulator.cpu.registers[0x3] = 0x42;
-            emulator.cpu.registers[0x5] = 0x71;
             emulator.execute(SkipIfRegEqReg {
                 register_lhs: 0x3,
                 register_rhs: 0x5,
@@ -985,11 +985,11 @@ mod tests {
         {
             // Given
             let mut emulator = Emulator::new();
+            emulator.input[0xA] = true;
+            emulator.cpu.registers[0x3] = 0xA;
             let pc = emulator.cpu.program_counter;
 
             // When
-            emulator.input[0xA] = true;
-            emulator.cpu.registers[0x3] = 0xA;
             emulator.execute(SkipIfKeyPressed { register: 0x3 });
 
             // Then
@@ -999,11 +999,11 @@ mod tests {
         {
             // Given
             let mut emulator = Emulator::new();
+            emulator.input[0xA] = false;
+            emulator.cpu.registers[0x3] = 0xA;
             let pc = emulator.cpu.program_counter;
 
             // When
-            emulator.input[0xA] = false;
-            emulator.cpu.registers[0x3] = 0xA;
             emulator.execute(SkipIfKeyPressed { register: 0x3 });
 
             // Then
@@ -1018,11 +1018,11 @@ mod tests {
         {
             // Given
             let mut emulator = Emulator::new();
+            emulator.input[0xA] = true;
+            emulator.cpu.registers[0x3] = 0xA;
             let pc = emulator.cpu.program_counter;
 
             // When
-            emulator.input[0xA] = true;
-            emulator.cpu.registers[0x3] = 0xA;
             emulator.execute(SkipIfKeyNotPressed { register: 0x3 });
 
             // Then
@@ -1032,11 +1032,11 @@ mod tests {
         {
             // Given
             let mut emulator = Emulator::new();
+            emulator.input[0xA] = false;
+            emulator.cpu.registers[0x3] = 0xA;
             let pc = emulator.cpu.program_counter;
 
             // When
-            emulator.input[0xA] = false;
-            emulator.cpu.registers[0x3] = 0xA;
             emulator.execute(SkipIfKeyNotPressed { register: 0x3 });
 
             // Then
@@ -1050,9 +1050,9 @@ mod tests {
 
         // Given
         let mut emulator = Emulator::new();
+        emulator.cpu.registers[0x4] = 0x42;
 
         // When
-        emulator.cpu.registers[0x4] = 0x42;
         emulator.execute(SetRegToConstant {
             register: 0x4,
             constant: 0xD7,
@@ -1069,9 +1069,9 @@ mod tests {
         {
             // Given
             let mut emulator = Emulator::new();
+            emulator.cpu.registers[0x4] = 0x27;
 
             // When
-            emulator.cpu.registers[0x4] = 0x27;
             emulator.execute(AddConstToReg {
                 register: 0x4,
                 constant: 0xD7,
@@ -1085,9 +1085,9 @@ mod tests {
         {
             // Given
             let mut emulator = Emulator::new();
+            emulator.cpu.registers[0x4] = 0xff;
 
             // When
-            emulator.cpu.registers[0x4] = 0xff;
             emulator.execute(AddConstToReg {
                 register: 0x4,
                 constant: 0x01,
@@ -1105,10 +1105,10 @@ mod tests {
 
         // Given
         let mut emulator = Emulator::new();
-
-        // When
         emulator.cpu.registers[0x3] = 0x42;
         emulator.cpu.registers[0xa] = 0xd5;
+
+        // When
         emulator.execute(SetRegToReg {
             register_lhs: 0x3,
             register_rhs: 0xa,
@@ -1124,10 +1124,10 @@ mod tests {
 
         // Given
         let mut emulator = Emulator::new();
-
-        // When
         emulator.cpu.registers[0x3] = 0x42;
         emulator.cpu.registers[0xa] = 0xd5;
+
+        // When
         emulator.execute(BitwiseOr {
             register_lhs: 0x3,
             register_rhs: 0xa,
@@ -1143,10 +1143,10 @@ mod tests {
 
         // Given
         let mut emulator = Emulator::new();
-
-        // When
         emulator.cpu.registers[0x3] = 0x42;
         emulator.cpu.registers[0xa] = 0xd5;
+
+        // When
         emulator.execute(BitwiseAnd {
             register_lhs: 0x3,
             register_rhs: 0xa,
@@ -1162,10 +1162,10 @@ mod tests {
 
         // Given
         let mut emulator = Emulator::new();
-
-        // When
         emulator.cpu.registers[0x3] = 0x42;
         emulator.cpu.registers[0xa] = 0xd5;
+
+        // When
         emulator.execute(BitwiseXor {
             register_lhs: 0x3,
             register_rhs: 0xa,
@@ -1182,10 +1182,10 @@ mod tests {
         {
             // Given
             let mut emulator = Emulator::new();
-
-            // When
             emulator.cpu.registers[0x3] = 0x42;
             emulator.cpu.registers[0xa] = 0x65;
+
+            // When
             emulator.execute(AddRegToReg {
                 register_lhs: 0x3,
                 register_rhs: 0xa,
@@ -1199,10 +1199,10 @@ mod tests {
         {
             // Given
             let mut emulator = Emulator::new();
-
-            // When
             emulator.cpu.registers[0x3] = 0xff;
             emulator.cpu.registers[0xa] = 0x1;
+
+            // When
             emulator.execute(AddRegToReg {
                 register_lhs: 0x3,
                 register_rhs: 0xa,
@@ -1221,10 +1221,10 @@ mod tests {
         {
             // Given
             let mut emulator = Emulator::new();
-
-            // When
             emulator.cpu.registers[0x3] = 0x65;
             emulator.cpu.registers[0x4] = 0x42;
+
+            // When
             emulator.execute(SubReg2FromReg1 {
                 register_lhs: 0x3,
                 register_rhs: 0x4,
@@ -1238,10 +1238,10 @@ mod tests {
         {
             // Given
             let mut emulator = Emulator::new();
-
-            // When
             emulator.cpu.registers[0x3] = 0x0;
             emulator.cpu.registers[0x4] = 0x4;
+
+            // When
             emulator.execute(SubReg2FromReg1 {
                 register_lhs: 0x3,
                 register_rhs: 0x4,
@@ -1260,10 +1260,10 @@ mod tests {
         {
             // Given
             let mut emulator = Emulator::new();
-
-            // When
             emulator.cpu.registers[0x3] = 0x42;
             emulator.cpu.registers[0x4] = 0x65;
+
+            // When
             emulator.execute(SubReg1FromReg2 {
                 register_lhs: 0x3,
                 register_rhs: 0x4,
@@ -1277,10 +1277,10 @@ mod tests {
         {
             // Given
             let mut emulator = Emulator::new();
-
-            // When
             emulator.cpu.registers[0x3] = 0x7;
             emulator.cpu.registers[0x4] = 0x0;
+
+            // When
             emulator.execute(SubReg1FromReg2 {
                 register_lhs: 0x3,
                 register_rhs: 0x4,
@@ -1299,9 +1299,9 @@ mod tests {
         {
             // Given
             let mut emulator = Emulator::new();
+            emulator.cpu.registers[0x3] = 0b11001101;
 
             // When
-            emulator.cpu.registers[0x3] = 0b11001101;
             emulator.execute(BitwiseShrBy1 { register: 0x3 });
 
             // Then
@@ -1312,9 +1312,9 @@ mod tests {
         {
             // Given
             let mut emulator = Emulator::new();
+            emulator.cpu.registers[0x3] = 0b10001110;
 
             // When
-            emulator.cpu.registers[0x3] = 0b10001110;
             emulator.execute(BitwiseShrBy1 { register: 0x3 });
 
             // Then
@@ -1330,9 +1330,9 @@ mod tests {
         {
             // Given
             let mut emulator = Emulator::new();
+            emulator.cpu.registers[0x3] = 0b1101;
 
             // When
-            emulator.cpu.registers[0x3] = 0b1101;
             emulator.execute(BitwiseShlBy1 { register: 0x3 });
 
             // Then
@@ -1343,9 +1343,9 @@ mod tests {
         {
             // Given
             let mut emulator = Emulator::new();
+            emulator.cpu.registers[0x3] = 0b11001110;
 
             // When
-            emulator.cpu.registers[0x3] = 0b11001110;
             emulator.execute(BitwiseShlBy1 { register: 0x3 });
 
             // Then
@@ -1360,9 +1360,9 @@ mod tests {
 
         // Given
         let mut emulator = Emulator::new();
+        emulator.cpu.register_i = 0x0;
 
         // When
-        emulator.cpu.register_i = 0x0;
         emulator.execute(SetAddress { address: 0x456 });
 
         // Then
@@ -1370,14 +1370,14 @@ mod tests {
     }
 
     #[test]
-    fn should_execute_jump_with_v9_offset() {
+    fn should_execute_jump_with_v0_offset() {
         use Instruction::*;
 
         // Given
         let mut emulator = Emulator::new();
+        emulator.cpu.registers[0] = 0xff;
 
         // When
-        emulator.cpu.registers[0] = 0xff;
         emulator.execute(JumpWithV0Offset { address: 0x456 });
 
         // Then
