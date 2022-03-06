@@ -285,6 +285,11 @@ impl Instruction {
     }
 }
 
+enum InstructionExecuteStatus {
+    Complete,
+    InProgress,
+}
+
 impl Emulator {
     pub fn new() -> Emulator {
         let mut emulator = Emulator {
@@ -464,12 +469,12 @@ impl Emulator {
         }
 
         if self.cpu_timer >= Duration::from_millis(2) {
-            {
-                let opcode = self.fetch_opcode().unwrap();
-                let instruction = Instruction::decode(opcode);
-                self.execute(instruction);
+            let opcode = self.fetch_opcode().unwrap();
+            let instruction = Instruction::decode(opcode);
+            match self.execute(instruction) {
+                InstructionExecuteStatus::Complete => self.cpu_timer = Duration::ZERO,
+                InstructionExecuteStatus::InProgress => {}
             }
-            self.cpu_timer = Duration::ZERO;
         }
     }
 
@@ -482,7 +487,7 @@ impl Emulator {
         return Some(opcode);
     }
 
-    fn execute(&mut self, instruction: Instruction) {
+    fn execute(&mut self, instruction: Instruction) -> InstructionExecuteStatus {
         self.cpu.program_counter += 2;
 
         use Instruction::*;
@@ -664,7 +669,8 @@ impl Emulator {
                     }
                 }
                 if !key_pressed {
-                    self.cpu.program_counter -= 2
+                    self.cpu.program_counter -= 2;
+                    return InstructionExecuteStatus::InProgress;
                 }
             }
             SetDelayTimer { register } => self.cpu.delay_timer = self.cpu.registers[register],
@@ -717,6 +723,8 @@ impl Emulator {
                 println!("Unknown instruction: {:#06x}", opcode)
             }
         }
+
+        return InstructionExecuteStatus::Complete;
     }
 
     fn draw_pixels(&mut self, pixels: &[(u32, u32)]) -> bool {
