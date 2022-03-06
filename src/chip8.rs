@@ -560,7 +560,7 @@ impl Emulator {
                 match result {
                     (sub, overflow) => {
                         self.cpu.registers[register_lhs] = sub;
-                        self.cpu.registers[0xF] = overflow as u8;
+                        self.cpu.registers[0xF] = !overflow as u8;
                     }
                 }
             }
@@ -577,7 +577,7 @@ impl Emulator {
                 match result {
                     (sub, overflow) => {
                         self.cpu.registers[register_lhs] = sub;
-                        self.cpu.registers[0xF] = overflow as u8;
+                        self.cpu.registers[0xF] = !overflow as u8;
                     }
                 }
             }
