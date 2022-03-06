@@ -612,34 +612,21 @@ impl Emulator {
                 register_y,
                 n_bytes,
             } => {
-                let origin_x = self.cpu.registers[register_x] as u32;
-                let origin_y = self.cpu.registers[register_y] as u32;
+                let origin_x = self.cpu.registers[register_x] as u32 % SCREEN_WIDTH;
+                let origin_y = self.cpu.registers[register_y] as u32 % SCREEN_HEIGHT;
                 let mut pixels = Vec::new();
                 for i in 0..n_bytes {
-                    let data = self.memory[self.cpu.register_i as usize + i as usize];
-                    if data & 0b10000000 != 0 {
-                        pixels.push((origin_x, origin_y + i as u32));
-                    }
-                    if data & 0b01000000 != 0 {
-                        pixels.push((origin_x + 1, origin_y + i as u32));
-                    }
-                    if data & 0b00100000 != 0 {
-                        pixels.push((origin_x + 2, origin_y + i as u32));
-                    }
-                    if data & 0b00010000 != 0 {
-                        pixels.push((origin_x + 3, origin_y + i as u32));
-                    }
-                    if data & 0b00001000 != 0 {
-                        pixels.push((origin_x + 4, origin_y + i as u32));
-                    }
-                    if data & 0b00000100 != 0 {
-                        pixels.push((origin_x + 5, origin_y + i as u32));
-                    }
-                    if data & 0b00000010 != 0 {
-                        pixels.push((origin_x + 6, origin_y + i as u32));
-                    }
-                    if data & 0b00000001 != 0 {
-                        pixels.push((origin_x + 7, origin_y + i as u32));
+                    let sprite = self.memory[self.cpu.register_i as usize + i as usize];
+                    let mut mask = 0b10000000;
+                    for j in 0..8 {
+                        let (pixel_x, pixel_y) = (origin_x + j, origin_y + i as u32);
+                        if (pixel_x >= SCREEN_WIDTH) || (pixel_y >= SCREEN_HEIGHT) {
+                            break;
+                        }
+                        if sprite & mask != 0 {
+                            pixels.push((pixel_x, pixel_y));
+                        }
+                        mask >>= 1;
                     }
                 }
 
