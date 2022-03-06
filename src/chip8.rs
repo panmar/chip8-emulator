@@ -1491,4 +1491,34 @@ mod tests {
         assert!(emulator.active_pixels.contains(&(12, 11)));
         assert_eq!(emulator.cpu.registers[0xF], 0);
     }
+
+    #[test]
+    fn should_execute_set_reg_to_delay_timer() {
+        use Instruction::*;
+
+        // Given
+        let mut emulator = Emulator::new();
+        emulator.cpu.delay_timer = 42;
+
+        // When
+        emulator.execute(SetRegToDelayTimer { register: 0x3 });
+
+        // Then
+        assert_eq_hex!(emulator.cpu.registers[0x3], 42);
+    }
+
+    #[test]
+    fn should_execute_await_and_set_key_press() {
+        use Instruction::*;
+
+        // Given
+        let mut emulator = Emulator::new();
+        emulator.input[0xC] = true;
+
+        // When
+        emulator.execute(AwaitAndSetKeyPress { register: 0x3 });
+
+        // Then
+        assert_eq_hex!(emulator.cpu.registers[0x3], 0xC);
+    }
 }
