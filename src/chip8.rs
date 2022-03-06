@@ -62,7 +62,7 @@ enum Instruction {
     AddRegToAddressWithoutCarry { register: usize },
     SetAddressOfFontChar { register: usize },
     StoreRegBcd { register: usize },
-    SaveRegisters { last_register: usize },
+    StoreRegisters { last_register: usize },
     LoadRegisters { last_register: usize },
 
     Unknown { opcode: u16 },
@@ -187,7 +187,7 @@ impl Instruction {
             [0xF, register, 0x3, 0x3] => StoreRegBcd {
                 register: register as usize,
             },
-            [0xF, register, 0x5, 0x5] => SaveRegisters {
+            [0xF, register, 0x5, 0x5] => StoreRegisters {
                 last_register: register as usize,
             },
             [0xF, register, 0x6, 0x5] => LoadRegisters {
@@ -276,7 +276,7 @@ impl Instruction {
             AddRegToAddressWithoutCarry { register } => 0xF01E | ((*register as u16) << 8),
             SetAddressOfFontChar { register } => 0xF029 | ((*register as u16) << 8),
             StoreRegBcd { register } => 0xF033 | ((*register as u16) << 8),
-            SaveRegisters { last_register } => 0xF055 | ((*last_register as u16) << 8),
+            StoreRegisters { last_register } => 0xF055 | ((*last_register as u16) << 8),
             LoadRegisters { last_register } => 0xF065 | ((*last_register as u16) << 8),
 
             Unknown { opcode } => *opcode,
@@ -702,7 +702,7 @@ impl Emulator {
                 value /= 10;
                 self.memory[(self.cpu.register_i + 0) as usize] = value % 10;
             }
-            SaveRegisters { last_register } => {
+            StoreRegisters { last_register } => {
                 for i in 0..=last_register {
                     self.memory[self.cpu.register_i as usize + i] = self.cpu.registers[i];
                 }
@@ -782,7 +782,7 @@ mod tests {
         assert_eq_hex!(AddRegToAddressWithoutCarry{register: 0x5}.to_opcode(), 0xF51E);
         assert_eq_hex!(SetAddressOfFontChar{register: 0x5}.to_opcode(), 0xF529);
         assert_eq_hex!(StoreRegBcd{register: 0x7}.to_opcode(), 0xF733);
-        assert_eq_hex!(SaveRegisters{last_register: 0x7}.to_opcode(), 0xF755);
+        assert_eq_hex!(StoreRegisters{last_register: 0x7}.to_opcode(), 0xF755);
         assert_eq_hex!(LoadRegisters{last_register: 0x7}.to_opcode(), 0xF765);
     }
 
