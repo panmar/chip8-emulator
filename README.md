@@ -15,3 +15,7 @@ pub fn main() {
     platform.run(&mut emulator);
 }
 ```
+## Useful links
+* http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#8xy2
+* https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#timers
+* http://johnearnest.github.io/Octo/docs/XO-ChipSpecification.html
