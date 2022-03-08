@@ -1,7 +1,8 @@
-use chip8_emulator::sdl_platform::SDLPlatform;
 use chip8_emulator::chip8::Emulator;
+use chip8_emulator::sdl_platform::SDLPlatform;
 
 #[test]
+#[rustfmt::skip]
 #[ignore]
 fn should_display_font() {
     let mut emulator = Emulator::new();
@@ -10,6 +11,7 @@ fn should_display_font() {
         0x60, 0x0F,
         0xF0, 0x29,
         0xD2, 0x2A,
-    });    let mut platform = SDLPlatform::new();
+    });
+    let mut platform = SDLPlatform::new();
     platform.run(&mut emulator);
 }
