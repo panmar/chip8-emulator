@@ -25,7 +25,7 @@ cargo run -- <filepath-to-rom>
 ```
 cargo test
 ```
-## Usage
+## Example
 ```rust
 mod chip8;
 mod sdl_platform;
