@@ -19,7 +19,7 @@ Classic CHIP-8 keyboard (0-A) is mapped into the following QWERTY layout:
 
 ## Run
 ```
-cargo run -- <filepath-to-rom>
+cargo run <filepath-to-rom>
 ```
 ## Tests
 ```
