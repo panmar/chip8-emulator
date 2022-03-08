@@ -1,7 +1,7 @@
 # chip8-emulator
 A [CHIP-8](https://en.wikipedia.org/wiki/CHIP-8) emulator written in Rust.
 
-<p align="center"><img src="sample_game.jpg" alt="example" width="50%"/></p>
+<p align="center"><img src="sample_game.jpg" alt="example" width="75%"/></p>
 
 ## Example
 ```rust
